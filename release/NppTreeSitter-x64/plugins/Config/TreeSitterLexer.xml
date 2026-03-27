@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+    TreeSitterLexer companion configuration for Notepad++.
+
+    Install to: plugins\Config\TreeSitterLexer.xml
+
+    This file defines the styles used by all tree-sitter based lexers.
+    Notepad++ reads this when loading external lexer plugins.
+
+    Each LexerType name must match what GetLexerName() returns
+    (e.g. "treesitter.python", "treesitter.rust", etc.)
+
+    Style IDs map to TSStyle enum values:
+      0  = Default        7  = Function
+      1  = Comment        8  = Type
+      2  = CommentDoc     9  = Preprocessor
+      3  = Keyword        10 = Variable
+      4  = String         11 = Constant
+      5  = Number         12 = Punctuation
+      6  = Operator       13 = Tag
+-->
+<NotepadPlus>
+    <Languages>
+        <!-- Python -->
+        <Language name="treesitter.python" ext="py pyw" commentLine="#">
+            <Keywords name="instre1">False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield</Keywords>
+        </Language>
+
+        <!-- Rust -->
+        <Language name="treesitter.rust" ext="rs" commentLine="//" commentStart="/*" commentEnd="*/">
+            <Keywords name="instre1">as async await break const continue crate dyn else enum extern false fn for if impl in let loop match mod move mut pub ref return self Self static struct super trait true type unsafe use where while</Keywords>
+        </Language>
+
+        <!-- Go -->
+        <Language name="treesitter.go" ext="go" commentLine="//" commentStart="/*" commentEnd="*/">
+            <Keywords name="instre1">break case chan const continue default defer else fallthrough for func go goto if import interface map package range return select struct switch type var</Keywords>
+        </Language>
+
+        <!-- F# -->
+        <Language name="treesitter.fsharp" ext="fs fsi fsx" commentLine="//" commentStart="(*" commentEnd="*)">
+            <Keywords name="instre1">abstract and as assert base begin class default delegate do done downcast downto elif else end exception extern false finally for fun function global if in inherit inline interface internal let match member module mutable namespace new not null of open or override private public rec return static struct then to true try type upcast use val void when while with yield</Keywords>
+        </Language>
+    </Languages>
+
+    <LexerStyles>
+        <!-- Shared style definitions for all tree-sitter lexers.
+             Notepad++ applies these when a buffer uses an external lexer
+             whose name matches the LexerType attribute. -->
+
+        <LexerType name="treesitter.python" desc="Python (tree-sitter)" ext="py pyw">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+
+        <LexerType name="treesitter.rust" desc="Rust (tree-sitter)" ext="rs">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+
+        <LexerType name="treesitter.go" desc="Go (tree-sitter)" ext="go">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+
+        <LexerType name="treesitter.fsharp" desc="F# (tree-sitter)" ext="fs fsi fsx">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+    </LexerStyles>
+</NotepadPlus>

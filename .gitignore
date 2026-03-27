@@ -1,0 +1,15 @@
+# Build outputs
+build/
+
+# Visual Studio
+*.user
+*.suo
+*.sdf
+*.opensdf
+*.db
+*.opendb
+.vs/
+
+# Grammar build outputs (built by grammars/build-grammars.ps1)
+grammars/repos/
+grammars/build/

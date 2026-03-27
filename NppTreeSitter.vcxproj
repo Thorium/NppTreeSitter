@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|ARM64">
+      <Configuration>Debug</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|ARM64">
+      <Configuration>Release</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <ProjectGuid>{B1A2C3D4-E5F6-7890-ABCD-EF1234567890}</ProjectGuid>
+    <RootNamespace>NppTreeSitter</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+	<RepositoryUrl>https://bitbucket.org/Thorium/NppTreeSitter</RepositoryUrl>
+	<RepositoryType>git</RepositoryType>
+	<Authors>Tuomas Hietanen</Authors>
+	<PackageReadmeFile>README.md</PackageReadmeFile>
+	<PackageLicenseExpression>Unlicense</PackageLicenseExpression>
+	<Copyright>Unlicense - Public Domain</Copyright>
+	<PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <Keyword>Win32Proj</Keyword>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <!-- Configuration property sheets -->
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <!-- 
+    Tree-sitter dependency: expects tree-sitter source at external\tree-sitter\
+    To set up:
+      cd TreeSitterLexer\external
+      git clone - -depth 1 https://github.com/tree-sitter/tree-sitter.git
+    Or add as a git submodule.
+  -->
+  <PropertyGroup>
+    <TreeSitterDir>$(MSBuildProjectDirectory)\external\tree-sitter</TreeSitterDir>
+    <ScintillaIncDir>$(MSBuildProjectDirectory)\external\scintilla\include</ScintillaIncDir>
+  </PropertyGroup>
+
+  <!-- Output paths -->
+  <PropertyGroup>
+    <OutDir>$(MSBuildProjectDirectory)\build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildProjectDirectory)\build\obj\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>TreeSitterLexer</TargetName>
+  </PropertyGroup>
+
+  <!-- Compiler settings (all configurations) -->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>
+        $(ScintillaIncDir);$(TreeSitterDir)\lib\include;$(TreeSitterDir)\lib\src;%(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_USRDLL;TREESITTERLEXER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <WarningLevel>Level3</WarningLevel>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <DisableSpecificWarnings>4996;4267;4244;4101</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <!-- Debug-specific -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- Release-specific -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <!-- Source files -->
+  <ItemGroup>
+    <ClCompile Include="src\dllmain.cpp" />
+    <ClCompile Include="src\TreeSitterLexer.cpp" />
+    <!-- tree-sitter core: compile lib.c directly into our DLL -->
+    <ClCompile Include="$(TreeSitterDir)\lib\src\lib.c">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <CompileAs>CompileAsC</CompileAs>
+    </ClCompile>
+  </ItemGroup>
+
+  <!-- Header files -->
+  <ItemGroup>
+    <ClInclude Include="src\TreeSitterLexer.h" />
+  </ItemGroup>
+
+  <!--
+    Post-build: copy DLL to a test deployment directory that mirrors
+    the Notepad++ plugin layout:
+      plugins\TreeSitterLexer\TreeSitterLexer.dll
+      plugins\TreeSitterLexer\TreeSitterGrammars\*.dll + *.scm
+      plugins\Config\TreeSitterLexer.xml
+  -->
+  <Target Name="DeployPlugin" AfterTargets="Build" Condition="Exists('$(TreeSitterDir)')">
+    <Message Text="Build complete: $(OutDir)$(TargetName).dll" Importance="high" />
+    <Message Text="To install in Notepad++:" Importance="high" />
+    <Message Text="  1. Copy $(TargetName).dll to plugins\TreeSitterLexer\" Importance="high" />
+    <Message Text="  2. Copy TreeSitterGrammars\ to plugins\TreeSitterLexer\" Importance="high" />
+    <Message Text="  3. Copy config\TreeSitterLexer.xml to plugins\Config\" Importance="high" />
+  </Target>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
