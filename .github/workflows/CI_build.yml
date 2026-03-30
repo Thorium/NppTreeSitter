@@ -30,13 +30,25 @@ jobs:
       run: |
            msbuild NppTreeSitter.vcxproj /m /p:configuration=Release /p:platform="${{ matrix.build_platform }}"
 
-    - uses: olegtarasov/get-tag@v2.1.4
+    - name: Get tag name
       id: tagName
+      shell: bash
+      run: |
+           if [[ "${{ github.ref_type }}" == "tag" ]]; then
+             echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+           else
+             echo "tag=" >> "$GITHUB_OUTPUT"
+           fi
 
     - name: zip artifacts for Release ${{ matrix.build_platform }}
       run: |
            7z a NppTreeSitter_${{ steps.tagName.outputs.tag }}_${{ matrix.build_platform }}.zip .\build\${{ matrix.build_platform }}\Release\TreeSitterLexer.dll
-           7z a NppTreeSitter_${{ steps.tagName.outputs.tag }}_${{ matrix.build_platform }}.zip .\release\NppTreeSitter-x64\plugins\
+
+    - name: Bundle grammar DLLs and config (x64 only)
+      if: matrix.build_platform == 'x64'
+      run: |
+           7z a NppTreeSitter_${{ steps.tagName.outputs.tag }}_${{ matrix.build_platform }}.zip .\release\NppTreeSitter-x64\TreeSitterGrammars\
+           7z a NppTreeSitter_${{ steps.tagName.outputs.tag }}_${{ matrix.build_platform }}.zip .\release\NppTreeSitter-x64\TreeSitterLexer.xml
 
     - name: Archive artifacts for Release ${{ matrix.build_platform }}
       uses: actions/upload-artifact@v7
