@@ -6,10 +6,11 @@ $pluginDir = "$nppDir\plugins\TreeSitterLexer"
 $grammarDir = "$pluginDir\TreeSitterGrammars"
 $configDir = "$nppDir\plugins\Config"
 
-# Source paths
-$dllSrc = "C:\git\notepad-plus-plus\TreeSitterLexer\build\x64\Release\TreeSitterLexer.dll"
-$grammarSrc = "C:\git\notepad-plus-plus\build\x64\Release\TreeSitterGrammars"
-$xmlSrc = "C:\git\notepad-plus-plus\TreeSitterLexer\config\TreeSitterLexer.xml"
+# Source paths (relative to this script's directory)
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$dllSrc = Join-Path $ScriptDir "build\x64\Release\TreeSitterLexer.dll"
+$grammarSrc = Join-Path $ScriptDir "build\x64\Release\TreeSitterGrammars"
+$xmlSrc = Join-Path $ScriptDir "config\TreeSitterLexer.xml"
 
 Write-Host "Creating directories..."
 New-Item -ItemType Directory -Path $grammarDir -Force | Out-Null
