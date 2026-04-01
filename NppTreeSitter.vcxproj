@@ -139,6 +139,11 @@
     <ClInclude Include="src\TreeSitterLexer.h" />
   </ItemGroup>
 
+  <!-- Version resource -->
+  <ItemGroup>
+    <ResourceCompile Include="src\TreeSitterLexer.rc" />
+  </ItemGroup>
+
   <!--
     Post-build: copy DLL to a test deployment directory that mirrors
     the Notepad++ plugin layout:

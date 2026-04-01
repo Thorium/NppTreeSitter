@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 #include "ILexer.h"
 #include "Sci_Position.h"
 

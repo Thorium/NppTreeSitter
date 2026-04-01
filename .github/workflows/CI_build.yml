@@ -30,6 +30,16 @@ jobs:
       run: |
            msbuild NppTreeSitter.vcxproj /m /p:configuration=Release /p:platform="${{ matrix.build_platform }}"
 
+    - name: Build grammar DLLs for Release ${{ matrix.build_platform }}
+      shell: powershell
+      run: |
+           .\grammars\build-grammars.ps1 -Platform "${{ matrix.build_platform }}" -Configuration Release
+
+    - name: Package release zip for ${{ matrix.build_platform }}
+      shell: powershell
+      run: |
+           .\package-release.ps1 -Platform "${{ matrix.build_platform }}" -Configuration Release -OutDir .\release
+
     - name: Get tag name
       id: tagName
       shell: bash
@@ -41,14 +51,14 @@ jobs:
            fi
 
     - name: zip artifacts for Release ${{ matrix.build_platform }}
+      shell: powershell
       run: |
-           7z a NppTreeSitter_${{ steps.tagName.outputs.tag }}_${{ matrix.build_platform }}.zip .\build\${{ matrix.build_platform }}\Release\TreeSitterLexer.dll
-
-    - name: Bundle grammar DLLs and config (x64 only)
-      if: matrix.build_platform == 'x64'
-      run: |
-           7z a NppTreeSitter_${{ steps.tagName.outputs.tag }}_${{ matrix.build_platform }}.zip .\release\NppTreeSitter-x64\TreeSitterGrammars\
-           7z a NppTreeSitter_${{ steps.tagName.outputs.tag }}_${{ matrix.build_platform }}.zip .\release\NppTreeSitter-x64\TreeSitterLexer.xml
+           $packageName = switch ("${{ matrix.build_platform }}") {
+             "x64" { "NppTreeSitter-x64.zip" }
+             "Win32" { "NppTreeSitter-x86.zip" }
+             "ARM64" { "NppTreeSitter-arm64.zip" }
+           }
+           Copy-Item ".\release\$packageName" "NppTreeSitter_${{ steps.tagName.outputs.tag }}_${{ matrix.build_platform }}.zip"
 
     - name: Archive artifacts for Release ${{ matrix.build_platform }}
       uses: actions/upload-artifact@v7

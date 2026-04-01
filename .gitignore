@@ -1,5 +1,7 @@
 # Build outputs
+release/
 build/
+BuildTmp/
 
 # Visual Studio
 *.user

@@ -8,7 +8,7 @@
 .PARAMETER OutDir
     Output directory for DLLs and .scm files.
 .PARAMETER Platform
-    Target platform: x64, x86, or ARM64. Default: x64.
+    Target platform: x64, Win32/x86, or ARM64. Default: x64.
 .PARAMETER Configuration
     Build configuration: Release or Debug. Default: Release.
 .PARAMETER GrammarFilter
@@ -19,7 +19,7 @@
 #>
 param(
     [string]$OutDir,
-    [ValidateSet("x64","x86","ARM64")]
+    [ValidateSet("x64","Win32","x86","ARM64")]
     [string]$Platform = "x64",
     [ValidateSet("Release","Debug")]
     [string]$Configuration = "Release",
@@ -29,9 +29,15 @@ param(
 $ErrorActionPreference = "Continue"
 
 $ScriptDir  = Split-Path -Parent $MyInvocation.MyCommand.Path
-$RepoRoot   = (Resolve-Path (Join-Path $ScriptDir "..\..")).Path
+$RepoRoot   = (Resolve-Path (Join-Path $ScriptDir "..")).Path
+$BuildPlatform = switch ($Platform) {
+    "x64"   { "x64" }
+    "Win32" { "Win32" }
+    "x86"   { "Win32" }
+    "ARM64" { "ARM64" }
+}
 if (-not $OutDir) {
-    $OutDir = Join-Path $ScriptDir "..\..\build\$Platform\$Configuration\TreeSitterGrammars"
+    $OutDir = Join-Path $RepoRoot "build\$BuildPlatform\$Configuration\TreeSitterGrammars"
     $OutDir = (New-Item -ItemType Directory -Path $OutDir -Force).FullName
 }
 $TempBase   = Join-Path $RepoRoot "BuildTmp\grammar-sources"
@@ -75,9 +81,20 @@ function Import-VcEnvironment {
 function Get-VcArch {
     switch ($Platform) {
         "x64"   { return "amd64" }
+        "Win32" { return "x86" }
         "x86"   { return "x86" }
         "ARM64" { return "amd64_arm64" }
         default { return "amd64" }
+    }
+}
+
+function Get-LibArch {
+    switch ($Platform) {
+        "x64"   { return "x64" }
+        "Win32" { return "x86" }
+        "x86"   { return "x86" }
+        "ARM64" { return "arm64" }
+        default { return "x64" }
     }
 }
 
@@ -204,6 +221,10 @@ Write-Host "Output:        $OutDir"
 Write-Host ""
 
 Import-VcEnvironment -Arch (Get-VcArch)
+$crtLibDir = Join-Path $env:VCToolsInstallDir ("lib\" + (Get-LibArch))
+if (-not (Test-Path (Join-Path $crtLibDir "msvcrt.lib"))) {
+    throw "MSVC runtime libraries for $Platform are not installed at $crtLibDir. Install the corresponding MSVC C++ toolchain before building grammars."
+}
 Write-Host ""
 
 $config = Get-Content $ConfigFile -Raw | ConvertFrom-Json
@@ -237,6 +258,12 @@ foreach ($entry in $config.grammars) {
 
         if ($GrammarFilter -and ($gName -notmatch $GrammarFilter)) {
             Write-Host "  Skipping $gName (filtered)"
+            $skipped++
+            continue
+        }
+
+        if ($Platform -eq "Win32" -and $gName -eq "flow") {
+            Write-Warning "  Skipping flow on Win32 because the current x86 MSVC build hits an internal compiler error"
             $skipped++
             continue
         }

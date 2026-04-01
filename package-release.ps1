@@ -14,7 +14,7 @@
     When Plugin Admin installs the plugin, it extracts everything into:
         <Npp>/plugins/TreeSitterLexer/
 .PARAMETER Platform
-    Target platform: x64, x86, or ARM64. Default: x64.
+    Target platform: x64, Win32/x86, or ARM64. Default: x64.
 .PARAMETER Configuration
     Build configuration: Release or Debug. Default: Release.
 .PARAMETER OutDir
@@ -24,7 +24,7 @@
     .\package-release.ps1 -Platform ARM64
 #>
 param(
-    [ValidateSet("x64","x86","ARM64")]
+    [ValidateSet("x64","Win32","x86","ARM64")]
     [string]$Platform = "x64",
     [ValidateSet("Release","Debug")]
     [string]$Configuration = "Release",
@@ -34,7 +34,13 @@ param(
 $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$BuildDir  = Join-Path $ScriptDir "build\$Platform\$Configuration"
+$BuildPlatform = switch ($Platform) {
+    "x64"   { "x64" }
+    "Win32" { "Win32" }
+    "x86"   { "Win32" }
+    "ARM64" { "ARM64" }
+}
+$BuildDir  = Join-Path $ScriptDir "build\$BuildPlatform\$Configuration"
 $DllPath   = Join-Path $BuildDir "TreeSitterLexer.dll"
 $GrammarDir = Join-Path $BuildDir "TreeSitterGrammars"
 $ConfigXml = Join-Path $ScriptDir "config\TreeSitterLexer.xml"
@@ -57,6 +63,7 @@ if (-not (Test-Path $ConfigXml)) {
 # Determine zip name based on platform
 $platformSuffix = switch ($Platform) {
     "x64"   { "x64" }
+    "Win32" { "x86" }
     "x86"   { "x86" }
     "ARM64" { "arm64" }
 }
@@ -75,6 +82,7 @@ New-Item -ItemType Directory -Path $StagingGrammarDir -Force | Out-Null
 
 Write-Host "=== Packaging NppTreeSitter Release ==="
 Write-Host "Platform: $Platform"
+Write-Host "Build dir: $BuildDir"
 Write-Host "Source:   $BuildDir"
 Write-Host "Output:   $ZipPath"
 Write-Host ""

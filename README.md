@@ -38,19 +38,27 @@ Grammar DLLs are built from source using `grammars/build-grammars.ps1`.
 
 ### Build the plugin
 
-```
+```powershell
 git clone --recurse-submodules https://github.com/<owner>/NppTreeSitter.git
 cd NppTreeSitter
 MSBuild NppTreeSitter.vcxproj -p:Configuration=Release -p:Platform=x64
+MSBuild NppTreeSitter.vcxproj -p:Configuration=Release -p:Platform=Win32
+MSBuild NppTreeSitter.vcxproj -p:Configuration=Release -p:Platform=ARM64
 ```
 
-Output: `build\x64\Release\TreeSitterLexer.dll`
+Outputs:
+
+- `build\x64\Release\TreeSitterLexer.dll`
+- `build\Win32\Release\TreeSitterLexer.dll`
+- `build\ARM64\Release\TreeSitterLexer.dll`
 
 ### Build grammar DLLs
 
 ```powershell
 cd grammars
-.\build-grammars.ps1
+.\build-grammars.ps1 -Platform x64
+.\build-grammars.ps1 -Platform Win32
+.\build-grammars.ps1 -Platform ARM64
 ```
 
 This clones each grammar repo listed in `grammars.json`, compiles the parser source into a DLL, and copies the `highlights.scm` query file.
@@ -67,7 +75,7 @@ Copy files into your Notepad++ installation:
 <Notepad++>\plugins\Config\TreeSitterLexer.xml
 ```
 
-Or run `deploy.ps1` (requires admin privileges for writing to Program Files).
+Or run `deploy.ps1 -Platform x64`, `deploy.ps1 -Platform Win32`, or `deploy.ps1 -Platform ARM64` (requires admin privileges for writing to Program Files).
 
 After restarting Notepad++, the tree-sitter languages appear at the bottom of the **Language** menu.
 
