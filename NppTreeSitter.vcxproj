@@ -37,9 +37,14 @@
 	<Authors>Tuomas Hietanen</Authors>
 	<PackageReadmeFile>README.md</PackageReadmeFile>
 	<PackageLicenseExpression>Unlicense</PackageLicenseExpression>
-	<Copyright>Unlicense - Public Domain</Copyright>
-	<PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <Copyright>Unlicense - Public Domain</Copyright>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <Keyword>Win32Proj</Keyword>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <NppTreeSitterPreferredToolset Condition="Exists('$(VCTargetsPath)\Platforms\$(Platform)\PlatformToolsets\v145\Toolset.props')">v145</NppTreeSitterPreferredToolset>
+    <NppTreeSitterPreferredToolset Condition="'$(NppTreeSitterPreferredToolset)' == ''">v143</NppTreeSitterPreferredToolset>
   </PropertyGroup>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -48,13 +53,13 @@
   <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>$(NppTreeSitterPreferredToolset)</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>$(NppTreeSitterPreferredToolset)</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
