@@ -105,6 +105,9 @@ constexpr int NPPMAINMENU = 1;
 
 constexpr wchar_t kGitHubUrl[] = L"https://github.com/Thorium/NppTreeSitter";
 
+// Startup isolation toggle used during crash diagnosis.
+constexpr bool kDisableExternalLexersForStartupIsolation = false;
+
 // Minimal reproduction of N++ plugin structs (from PluginInterface.h)
 struct NppData
 {
@@ -614,19 +617,8 @@ std::string DetectTreeSitterLanguageForFile(const std::wstring& path)
 
 bool PreferBuiltInLexerForExtension(const std::wstring& extension)
 {
-    static const std::unordered_map<std::wstring, bool> kBuiltInPreferred = {
-        { L"py", true }, { L"pyw", true }, { L"rs", true }, { L"go", true },
-        { L"c", true }, { L"cc", true }, { L"cpp", true }, { L"cxx", true },
-        { L"h", true }, { L"hh", true }, { L"hpp", true }, { L"hxx", true },
-        { L"cs", true }, { L"js", true }, { L"mjs", true }, { L"cjs", true },
-        { L"jsx", true }, { L"ts", true }, { L"java", true }, { L"json", true },
-        { L"htm", true }, { L"html", true }, { L"shtml", true }, { L"xhtml", true },
-        { L"css", true }, { L"sh", true }, { L"bash", true }, { L"rb", true },
-        { L"rake", true }, { L"gemspec", true }, { L"php", true }, { L"xml", true },
-        { L"xsd", true }, { L"xsl", true }, { L"xslt", true }, { L"svg", true },
-    };
-
-    return kBuiltInPreferred.find(extension) != kBuiltInPreferred.end();
+    (void)extension;
+    return false;
 }
 
 std::string TrimSelection(const std::string& value)
@@ -1333,50 +1325,11 @@ void goToCurrentSymbolDefinition() {
 // Dummy menu entry - N++ requires at least 1 FuncItem
 static void aboutDlg()
 {
-    const std::wstring version = GetModuleVersionString();
-    std::wstring content =
-        L"Tree-sitter syntax highlighting and navigation for Notepad++.\n\n";
-    if (!version.empty()) {
-        content += L"Version: ";
-        content += version;
-        content += L"\n\n";
-    }
-    content +=
-        L"Project page:\n"
-        L"<a href=\"https://github.com/Thorium/NppTreeSitter\">https://github.com/Thorium/NppTreeSitter</a>";
-
-    TASKDIALOGCONFIG config{};
-    config.cbSize = sizeof(config);
-    config.hwndParent = g_nppData._nppHandle;
-    config.dwFlags = TDF_ENABLE_HYPERLINKS | TDF_ALLOW_DIALOG_CANCELLATION;
-    config.dwCommonButtons = TDCBF_OK_BUTTON;
-    config.pszWindowTitle = L"TreeSitterLexer";
-    config.pszMainIcon = TD_INFORMATION_ICON;
-    config.pszMainInstruction = L"TreeSitterLexer";
-    config.pszContent = content.c_str();
-    config.pfCallback = AboutDialogCallback;
-
-    HRESULT hr = TaskDialogIndirect(&config, nullptr, nullptr, nullptr);
-    if (FAILED(hr)) {
-        std::wstring fallback = L"TreeSitterLexer - Tree-sitter syntax highlighting and navigation for Notepad++\n\n";
-        if (!version.empty()) {
-            fallback += L"Version: ";
-            fallback += version;
-            fallback += L"\n\n";
-        }
-        fallback +=
-            L"GitHub:\nhttps://github.com/Thorium/NppTreeSitter\n\n"
-            L"Open the project page now?";
-
-        const int result = ::MessageBoxW(
-            g_nppData._nppHandle,
-            fallback.c_str(),
-            L"TreeSitterLexer",
-            MB_YESNO | MB_ICONINFORMATION);
-
-        if (result == IDYES)
-            OpenGitHubPage();
-    }
+    ::MessageBoxW(g_nppData._nppHandle,
+        L"TreeSitterLexer - Tree-sitter syntax highlighting for Notepad++\n\n"
+        L"Provides external lexers powered by tree-sitter grammars.",
+        L"TreeSitterLexer",
+        MB_OK | MB_ICONINFORMATION);
 }
 
 FuncItem g_funcItems[] = {
@@ -1427,6 +1380,10 @@ __declspec(dllexport) void __cdecl beNotified(SCNotification* notifyCode)
     switch (notifyCode->nmhdr.code) {
     case NPPN_READY:
         UpdateAutoDetectCheck();
+        if (g_autoDetectEnabled)
+            autoDetectTreeSitterLanguage();
+        UpdateDefinitionCommandState();
+        UpdateInstallBundledGrammarCommandState();
         break;
     case NPPN_BUFFERACTIVATED:
         if (g_autoDetectEnabled)
@@ -1464,6 +1421,9 @@ __declspec(dllexport) FuncItem* __cdecl getFuncsArray(int* nbF)
 
 __declspec(dllexport) int __stdcall GetLexerCount()
 {
+    if (kDisableExternalLexersForStartupIsolation)
+        return 0;
+
     // Lazy init on first call
     TreeSitterRegistry::Instance().Initialize(g_hModule);
     return TreeSitterRegistry::Instance().GetLexerCount();
@@ -1472,11 +1432,20 @@ __declspec(dllexport) int __stdcall GetLexerCount()
 __declspec(dllexport) void __stdcall GetLexerName(unsigned int index,
                                                    char* name, int bufLength)
 {
+    if (kDisableExternalLexersForStartupIsolation) {
+        if (name && bufLength > 0)
+            name[0] = '\0';
+        return;
+    }
+
     TreeSitterRegistry::Instance().GetLexerName(index, name, bufLength);
 }
 
 __declspec(dllexport) ILexer5* __stdcall CreateLexer(const char* name)
 {
+    if (kDisableExternalLexersForStartupIsolation)
+        return nullptr;
+
     return TreeSitterRegistry::Instance().CreateLexer(name);
 }
 

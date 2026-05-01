@@ -1055,6 +1055,26 @@ void TreeSitterRegistry::DiscoverAvailableLanguages()
 {
     m_languageNames.clear();
 
+    static const std::unordered_set<std::string> kExposedLanguages = {
+        "python",
+        "rust",
+        "go",
+        "c",
+        "cpp",
+        "c-sharp",
+        "javascript",
+        "typescript",
+        "java",
+        "json",
+        "html",
+        "css",
+        "bash",
+        "ruby",
+        "php",
+        "xml",
+        "fsharp",
+    };
+
     // Check if directory exists
     DWORD attr = GetFileAttributesW(m_grammarDir.c_str());
     if (attr == INVALID_FILE_ATTRIBUTES || !(attr & FILE_ATTRIBUTE_DIRECTORY))
@@ -1081,7 +1101,8 @@ void TreeSitterRegistry::DiscoverAvailableLanguages()
             if (scmAttr != INVALID_FILE_ATTRIBUTES) {
                 std::string langA;
                 for (wchar_t ch : langW) langA += static_cast<char>(ch);
-                m_languageNames.push_back(langA);
+                if (kExposedLanguages.count(langA) > 0)
+                    m_languageNames.push_back(langA);
             }
         }
     } while (FindNextFileW(hFind, &fd));
