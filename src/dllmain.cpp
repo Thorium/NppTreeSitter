@@ -1069,6 +1069,9 @@ void SetCommandEnabled(int commandIndex, bool enabled)
     if (commandIndex < 0 || commandIndex >= kFuncItemCount)
         return;
 
+    if (g_funcItems[commandIndex]._cmdID == 0)
+        return;
+
     g_funcItems[commandIndex]._init2Check = enabled;
     ::EnableMenuItem(
         reinterpret_cast<HMENU>(::SendMessageW(g_nppData._nppHandle, NPPM_GETMENUHANDLE, 0, 0)),
@@ -1078,6 +1081,9 @@ void SetCommandEnabled(int commandIndex, bool enabled)
 
 void UpdateAutoDetectCheck()
 {
+    if (g_funcItems[kAutoDetectCommandIndex]._cmdID == 0)
+        return;
+
     ::SendMessageW(
         g_nppData._nppHandle,
         NPPM_SETMENUITEMCHECK,
@@ -1421,10 +1427,6 @@ __declspec(dllexport) void __cdecl beNotified(SCNotification* notifyCode)
     switch (notifyCode->nmhdr.code) {
     case NPPN_READY:
         UpdateAutoDetectCheck();
-        if (g_autoDetectEnabled)
-            autoDetectTreeSitterLanguage();
-        UpdateDefinitionCommandState();
-        UpdateInstallBundledGrammarCommandState();
         break;
     case NPPN_BUFFERACTIVATED:
         if (g_autoDetectEnabled)
