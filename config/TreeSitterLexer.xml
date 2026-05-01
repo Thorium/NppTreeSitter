@@ -36,8 +36,80 @@
             <Keywords name="instre1">break case chan const continue default defer else fallthrough for func go goto if import interface map package range return select struct switch type var</Keywords>
         </Language>
 
+        <!-- C -->
+        <Language name="treesitter.c" ext="c h" commentLine="//" commentStart="/*" commentEnd="*/">
+            <Keywords name="instre1">auto break case char const continue default do double else enum extern float for goto if inline int long register restrict return short signed sizeof static struct switch typedef union unsigned void volatile while</Keywords>
+        </Language>
+
+        <!-- C++ -->
+        <Language name="treesitter.cpp" ext="cc cpp cxx h hpp hxx hh" commentLine="//" commentStart="/*" commentEnd="*/">
+            <Keywords name="instre1">alignas alignof and and_eq asm auto bitand bitor bool break case catch char char16_t char32_t class compl concept const constexpr const_cast continue co_await co_return co_yield decltype default delete do double dynamic_cast else enum explicit export extern false float for friend goto if import inline int long module mutable namespace new noexcept not not_eq nullptr operator or or_eq private protected public register reinterpret_cast requires return short signed sizeof static static_assert struct switch template this thread_local throw true try typedef typeid typename union unsigned using virtual void volatile wchar_t while xor xor_eq</Keywords>
+        </Language>
+
+        <!-- C# -->
+        <Language name="treesitter.c-sharp" ext="cs" commentLine="//" commentStart="/*" commentEnd="*/">
+            <Keywords name="instre1">abstract as base bool break byte case catch char checked class const continue decimal default delegate do double else enum event explicit extern false finally fixed float for foreach goto if implicit in int interface internal is lock long namespace new null object operator out override params private protected public readonly ref return sbyte sealed short sizeof stackalloc static string struct switch this throw true try typeof uint ulong unchecked unsafe ushort using virtual void volatile while</Keywords>
+        </Language>
+
+        <!-- JavaScript -->
+        <Language name="treesitter.javascript" ext="js mjs cjs jsx" commentLine="//" commentStart="/*" commentEnd="*/">
+            <Keywords name="instre1">await break case catch class const continue debugger default delete do else export extends false finally for function if import in instanceof let new null return static super switch this throw true try typeof var void while with yield</Keywords>
+        </Language>
+
+        <!-- TypeScript -->
+        <Language name="treesitter.typescript" ext="ts" commentLine="//" commentStart="/*" commentEnd="*/">
+            <Keywords name="instre1">abstract any as asserts async await bigint boolean break case catch class const constructor continue debugger declare default delete do else enum export extends false finally for from function get if implements import in infer instanceof interface is keyof let module namespace never new null number object of override package private protected public readonly require return set static string super switch symbol this throw true try type typeof undefined unique unknown var void while with yield</Keywords>
+        </Language>
+
+        <!-- TSX -->
+        <Language name="treesitter.tsx" ext="tsx" commentLine="//" commentStart="/*" commentEnd="*/">
+            <Keywords name="instre1">abstract any as asserts async await bigint boolean break case catch class const constructor continue debugger declare default delete do else enum export extends false finally for from function get if implements import in infer instanceof interface is keyof let module namespace never new null number object of override package private protected public readonly require return set static string super switch symbol this throw true try type typeof undefined unique unknown var void while with yield</Keywords>
+        </Language>
+
+        <!-- Java -->
+        <Language name="treesitter.java" ext="java" commentLine="//" commentStart="/*" commentEnd="*/">
+            <Keywords name="instre1">abstract assert boolean break byte case catch char class const continue default do double else enum exports extends final finally float for goto if implements import instanceof int interface long module native new null open opens package private protected provides public record requires return short static strictfp super switch synchronized this throw throws to transient transitive true try uses void volatile while with yield</Keywords>
+        </Language>
+
+        <!-- JSON -->
+        <Language name="treesitter.json" ext="json" />
+
+        <!-- HTML -->
+        <Language name="treesitter.html" ext="htm html shtml xhtml" commentStart="<!--" commentEnd="-->" />
+
+        <!-- CSS -->
+        <Language name="treesitter.css" ext="css" commentStart="/*" commentEnd="*/" />
+
+        <!-- Bash -->
+        <Language name="treesitter.bash" ext="sh bash" commentLine="#">
+            <Keywords name="instre1">if then else elif fi case esac for select while until do done in function time coproc local readonly return export declare typeset unset alias unalias eval exec test</Keywords>
+        </Language>
+
+        <!-- Ruby -->
+        <Language name="treesitter.ruby" ext="rb rake gemspec" commentLine="#" commentStart="=begin" commentEnd="=end">
+            <Keywords name="instre1">BEGIN END alias and begin break case class def defined? do else elsif end ensure false for if in module next nil not or redo rescue retry return self super then true undef unless until when while yield</Keywords>
+        </Language>
+
+        <!-- PHP -->
+        <Language name="treesitter.php" ext="php" commentLine="//" commentStart="/*" commentEnd="*/">
+            <Keywords name="instre1">abstract and array as break callable case catch class clone const continue declare default die do echo else elseif empty enddeclare endfor endforeach endif endswitch endwhile enum eval exit extends final finally fn for foreach function global goto if implements include include_once instanceof insteadof interface isset list match namespace new null or print private protected public readonly require require_once return static switch throw trait try unset use var while xor yield</Keywords>
+        </Language>
+
+        <!-- PHP only -->
+        <Language name="treesitter.php_only" ext="phponly" commentLine="//" commentStart="/*" commentEnd="*/">
+            <Keywords name="instre1">abstract and array as break callable case catch class clone const continue declare default die do echo else elseif empty enddeclare endfor endforeach endif endswitch endwhile enum eval exit extends final finally fn for foreach function global goto if implements include include_once instanceof insteadof interface isset list match namespace new null or print private protected public readonly require require_once return static switch throw trait try unset use var while xor yield</Keywords>
+        </Language>
+
+        <!-- XML -->
+        <Language name="treesitter.xml" ext="xml xsd xsl xslt svg" commentStart="<!--" commentEnd="-->" />
+
         <!-- F# -->
         <Language name="treesitter.fsharp" ext="fs fsi fsx" commentLine="//" commentStart="(*" commentEnd="*)">
+            <Keywords name="instre1">abstract and as assert base begin class default delegate do done downcast downto elif else end exception extern false finally for fun function global if in inherit inline interface internal let match member module mutable namespace new not null of open or override private public rec return static struct then to true try type upcast use val void when while with yield</Keywords>
+        </Language>
+
+        <!-- F# signature -->
+        <Language name="treesitter.fsharp_signature" ext="fsi" commentLine="//" commentStart="(*" commentEnd="*)">
             <Keywords name="instre1">abstract and as assert base begin class default delegate do done downcast downto elif else end exception extern false finally for fun function global if in inherit inline interface internal let match member module mutable namespace new not null of open or override private public rec return static struct then to true try type upcast use val void when while with yield</Keywords>
         </Language>
     </Languages>
@@ -99,6 +171,278 @@
         </LexerType>
 
         <LexerType name="treesitter.fsharp" desc="F# (tree-sitter)" ext="fs fsi fsx">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+
+        <LexerType name="treesitter.c" desc="C (tree-sitter)" ext="c h">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+
+        <LexerType name="treesitter.cpp" desc="C++ (tree-sitter)" ext="cc cpp cxx h hpp hxx hh">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+
+        <LexerType name="treesitter.c-sharp" desc="C# (tree-sitter)" ext="cs">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+
+        <LexerType name="treesitter.javascript" desc="JavaScript (tree-sitter)" ext="js mjs cjs jsx">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+
+        <LexerType name="treesitter.typescript" desc="TypeScript (tree-sitter)" ext="ts">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+
+        <LexerType name="treesitter.tsx" desc="TSX (tree-sitter)" ext="tsx">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+
+        <LexerType name="treesitter.java" desc="Java (tree-sitter)" ext="java">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+
+        <LexerType name="treesitter.json" desc="JSON (tree-sitter)" ext="json">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+
+        <LexerType name="treesitter.html" desc="HTML (tree-sitter)" ext="htm html shtml xhtml">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+
+        <LexerType name="treesitter.css" desc="CSS (tree-sitter)" ext="css">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+
+        <LexerType name="treesitter.bash" desc="Bash (tree-sitter)" ext="sh bash">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+
+        <LexerType name="treesitter.ruby" desc="Ruby (tree-sitter)" ext="rb rake gemspec">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+
+        <LexerType name="treesitter.php" desc="PHP (tree-sitter)" ext="php">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+
+        <LexerType name="treesitter.php_only" desc="PHP only (tree-sitter)" ext="phponly">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+
+        <LexerType name="treesitter.xml" desc="XML (tree-sitter)" ext="xml xsd xsl xslt svg">
+            <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
+            <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
+            <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />
+            <WordsStyle name="KEYWORD"       styleID="3"  fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="STRING"        styleID="4"  fgColor="808080" />
+            <WordsStyle name="NUMBER"        styleID="5"  fgColor="FF8000" />
+            <WordsStyle name="OPERATOR"      styleID="6"  fgColor="000080" />
+            <WordsStyle name="FUNCTION"      styleID="7"  fgColor="800080" />
+            <WordsStyle name="TYPE"          styleID="8"  fgColor="008080" />
+            <WordsStyle name="PREPROCESSOR"  styleID="9"  fgColor="804000" />
+            <WordsStyle name="VARIABLE"      styleID="10" fgColor="800000" />
+            <WordsStyle name="CONSTANT"      styleID="11" fgColor="FF0000" />
+            <WordsStyle name="PUNCTUATION"   styleID="12" fgColor="404040" />
+            <WordsStyle name="TAG"           styleID="13" fgColor="0000FF" />
+        </LexerType>
+
+        <LexerType name="treesitter.fsharp_signature" desc="F# signature (tree-sitter)" ext="fsi">
             <WordsStyle name="DEFAULT"       styleID="0"  fgColor="000000" />
             <WordsStyle name="COMMENT"       styleID="1"  fgColor="008000" fontStyle="0" />
             <WordsStyle name="COMMENT DOC"   styleID="2"  fgColor="008000" fontStyle="2" />

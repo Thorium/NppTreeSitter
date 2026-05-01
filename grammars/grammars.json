@@ -16,6 +16,15 @@
     { "repo": "tree-sitter/tree-sitter-ruby",          "tag": "v0.23.1" },
     { "repo": "tree-sitter/tree-sitter-php",           "tag": "v0.24.2" },
     { "repo": "tree-sitter-grammars/tree-sitter-xml",  "tag": "v0.7.0"  },
-    { "repo": "ionide/tree-sitter-fsharp",             "tag": "0.2.2"   }
+    { "repo": "ionide/tree-sitter-fsharp",             "tag": "0.3.0"   },
+    { "repo": "r-lib/tree-sitter-r",                   "tag": "v1.2.0"  },
+    { "repo": "tree-sitter-grammars/tree-sitter-lua",  "tag": "v0.5.0"  },
+    { "repo": "tree-sitter-grammars/tree-sitter-yaml", "tag": "v0.7.2"  },
+    { "repo": "tree-sitter-grammars/tree-sitter-toml", "tag": "v0.7.0"  },
+    { "repo": "tree-sitter-grammars/tree-sitter-markdown", "tag": "v0.5.3" },
+    { "repo": "uyha/tree-sitter-cmake",                "tag": "v0.7.2"  },
+    { "repo": "stadelmanma/tree-sitter-fortran",       "tag": "v0.6.0"  },
+    { "repo": "Isopod/tree-sitter-pascal",             "tag": "v0.10.2" },
+    { "repo": "acristoffers/tree-sitter-matlab",       "tag": "v1.3.0"  }
   ]
 }

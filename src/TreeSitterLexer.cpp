@@ -152,7 +152,7 @@ char TreeSitterStyleMap::MapCapture(const std::string& captureName) const
 
 TreeSitterGrammar::TreeSitterGrammar()
     : m_hDll(nullptr), m_pLanguage(nullptr), m_pQuery(nullptr),
-      m_pLocalsQuery(nullptr), m_pInjectionQuery(nullptr)
+      m_pLocalsQuery(nullptr), m_pInjectionQuery(nullptr), m_pTagsQuery(nullptr)
 {
 }
 
@@ -164,6 +164,8 @@ TreeSitterGrammar::~TreeSitterGrammar()
         ts_query_delete(m_pLocalsQuery);
     if (m_pInjectionQuery)
         ts_query_delete(m_pInjectionQuery);
+    if (m_pTagsQuery)
+        ts_query_delete(m_pTagsQuery);
     if (m_hDll)
         FreeLibrary(m_hDll);
 }
@@ -237,6 +239,10 @@ bool TreeSitterGrammar::Load(const std::wstring& grammarDir, const std::wstring&
     // Load injection query (optional): <language>-injections.scm
     std::wstring injectionPath = grammarDir + L"\\" + language + L"-injections.scm";
     m_pInjectionQuery = LoadQuery(injectionPath);
+
+    // Load tags query (optional): <language>-tags.scm
+    std::wstring tagsPath = grammarDir + L"\\" + language + L"-tags.scm";
+    m_pTagsQuery = LoadQuery(tagsPath);
 
     return true;
 }
@@ -1034,13 +1040,8 @@ TreeSitterRegistry& TreeSitterRegistry::Instance()
     return instance;
 }
 
-void TreeSitterRegistry::Initialize(HMODULE hPluginDll)
+void TreeSitterRegistry::UpdateGrammarDirectory(HMODULE hPluginDll)
 {
-    if (m_initialized)
-        return;
-    m_initialized = true;
-
-    // Grammar directory: alongside the plugin DLL
     wchar_t dllPath[MAX_PATH] = {};
     GetModuleFileNameW(hPluginDll, dllPath, MAX_PATH);
     std::wstring dir(dllPath);
@@ -1048,6 +1049,11 @@ void TreeSitterRegistry::Initialize(HMODULE hPluginDll)
     if (pos != std::wstring::npos)
         dir = dir.substr(0, pos);
     m_grammarDir = dir + L"\\TreeSitterGrammars";
+}
+
+void TreeSitterRegistry::DiscoverAvailableLanguages()
+{
+    m_languageNames.clear();
 
     // Check if directory exists
     DWORD attr = GetFileAttributesW(m_grammarDir.c_str());
@@ -1083,6 +1089,26 @@ void TreeSitterRegistry::Initialize(HMODULE hPluginDll)
 
     // Sort for deterministic ordering
     std::sort(m_languageNames.begin(), m_languageNames.end());
+
+    for (const auto& langName : m_languageNames)
+        m_failedLanguages.erase(langName);
+}
+
+void TreeSitterRegistry::Refresh(HMODULE hPluginDll)
+{
+    UpdateGrammarDirectory(hPluginDll);
+    DiscoverAvailableLanguages();
+    m_initialized = true;
+}
+
+void TreeSitterRegistry::Initialize(HMODULE hPluginDll)
+{
+    if (m_initialized)
+        return;
+
+    UpdateGrammarDirectory(hPluginDll);
+    DiscoverAvailableLanguages();
+    m_initialized = true;
 }
 
 int TreeSitterRegistry::GetLexerCount() const

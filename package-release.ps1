@@ -8,8 +8,11 @@
     Expected zip structure:
         TreeSitterLexer.dll
         TreeSitterLexer.xml
+        Config/TreeSitterLexer.xml
         TreeSitterGrammars/tree-sitter-*.dll
-        TreeSitterGrammars/*-highlights.scm
+        TreeSitterGrammars/*-*.scm
+        BundledTreeSitterGrammars/tree-sitter-*.dll
+        BundledTreeSitterGrammars/*-*.scm
 
     When Plugin Admin installs the plugin, it extracts everything into:
         <Npp>/plugins/TreeSitterLexer/
@@ -44,6 +47,31 @@ $BuildDir  = Join-Path $ScriptDir "build\$BuildPlatform\$Configuration"
 $DllPath   = Join-Path $BuildDir "TreeSitterLexer.dll"
 $GrammarDir = Join-Path $BuildDir "TreeSitterGrammars"
 $ConfigXml = Join-Path $ScriptDir "config\TreeSitterLexer.xml"
+
+$OptionalBundledLanguages = @(
+    "r",
+    "lua",
+    "yaml",
+    "toml",
+    "markdown",
+    "cmake",
+    "fortran",
+    "pascal",
+    "matlab"
+)
+
+function Copy-GrammarLanguageFiles {
+    param(
+        [string]$SourceDir,
+        [string]$DestinationDir,
+        [string]$Language
+    )
+
+    Copy-Item (Join-Path $SourceDir "tree-sitter-$Language.dll") $DestinationDir -Force
+    Get-ChildItem -Path $SourceDir -Filter "$Language-*.scm" -File -ErrorAction SilentlyContinue | ForEach-Object {
+        Copy-Item $_.FullName $DestinationDir -Force
+    }
+}
 
 if (-not $OutDir) {
     $OutDir = Join-Path $ScriptDir "release"
@@ -80,6 +108,12 @@ New-Item -ItemType Directory -Path $StagingDir -Force | Out-Null
 $StagingGrammarDir = Join-Path $StagingDir "TreeSitterGrammars"
 New-Item -ItemType Directory -Path $StagingGrammarDir -Force | Out-Null
 
+$StagingBundledGrammarDir = Join-Path $StagingDir "BundledTreeSitterGrammars"
+New-Item -ItemType Directory -Path $StagingBundledGrammarDir -Force | Out-Null
+
+$StagingConfigDir = Join-Path $StagingDir "Config"
+New-Item -ItemType Directory -Path $StagingConfigDir -Force | Out-Null
+
 Write-Host "=== Packaging NppTreeSitter Release ==="
 Write-Host "Platform: $Platform"
 Write-Host "Build dir: $BuildDir"
@@ -95,10 +129,27 @@ Copy-Item $DllPath $StagingDir -Force
 Write-Host "Copying TreeSitterLexer.xml to zip root..."
 Copy-Item $ConfigXml $StagingDir -Force
 
+# Copy config XML to Config/ for direct deployment compatibility
+Write-Host "Copying TreeSitterLexer.xml to Config/..."
+Copy-Item $ConfigXml $StagingConfigDir -Force
+
 # Copy grammar DLLs and query files
 Write-Host "Copying grammar DLLs and query files..."
-Copy-Item "$GrammarDir\*.dll" $StagingGrammarDir -Force
-Copy-Item "$GrammarDir\*.scm" $StagingGrammarDir -Force
+Get-ChildItem -Path $GrammarDir -Filter "tree-sitter-*.dll" -File | ForEach-Object {
+    $language = $_.BaseName.Substring("tree-sitter-".Length)
+    if ($OptionalBundledLanguages -notcontains $language) {
+        Copy-GrammarLanguageFiles -SourceDir $GrammarDir -DestinationDir $StagingGrammarDir -Language $language
+    }
+}
+
+# Copy bundled grammar install payload for the in-plugin installer
+Write-Host "Copying bundled grammar install payload..."
+foreach ($language in $OptionalBundledLanguages) {
+    $dllPath = Join-Path $GrammarDir "tree-sitter-$language.dll"
+    if (Test-Path $dllPath) {
+        Copy-GrammarLanguageFiles -SourceDir $GrammarDir -DestinationDir $StagingBundledGrammarDir -Language $language
+    }
+}
 
 # Remove old zip if it exists
 if (Test-Path $ZipPath) {

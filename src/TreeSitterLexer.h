@@ -82,6 +82,7 @@ public:
     const TSQuery* GetHighlightQuery() const { return m_pQuery; }
     const TSQuery* GetLocalsQuery() const { return m_pLocalsQuery; }
     const TSQuery* GetInjectionQuery() const { return m_pInjectionQuery; }
+    const TSQuery* GetTagsQuery() const { return m_pTagsQuery; }
     const std::string& GetName() const { return m_name; }
 
 private:
@@ -92,6 +93,7 @@ private:
     TSQuery*          m_pQuery;
     TSQuery*          m_pLocalsQuery;
     TSQuery*          m_pInjectionQuery;
+    TSQuery*          m_pTagsQuery;
     std::string       m_name;    // ASCII language name (e.g. "python")
 };
 
@@ -176,6 +178,7 @@ public:
     static TreeSitterRegistry& Instance();
 
     void Initialize(HMODULE hPluginDll);
+    void Refresh(HMODULE hPluginDll);
 
     int GetLexerCount() const;
     void GetLexerName(unsigned int index, char* name, int bufLength) const;
@@ -186,6 +189,9 @@ public:
 
 private:
     TreeSitterRegistry() = default;
+
+    void UpdateGrammarDirectory(HMODULE hPluginDll);
+    void DiscoverAvailableLanguages();
 
     bool m_initialized = false;
     std::wstring m_grammarDir;

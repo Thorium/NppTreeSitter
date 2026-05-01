@@ -21,11 +21,81 @@ The tree-sitter core library is compiled directly into the plugin DLL (not a sep
 
 ## Supported languages
 
-The grammar manifest (`grammars/grammars.json`) currently lists 17 languages:
+The grammar manifest (`grammars/grammars.json`) lists a curated bundled set of common languages and common project/config formats that are intended to ship in release packages.
 
-Python, Rust, Go, C, C++, C#, F#, JavaScript, TypeScript, Java, JSON, HTML, CSS, Bash, Ruby, PHP, XML
+Release packages currently split them into two groups:
+
+- preinstalled in `TreeSitterGrammars`: Python, Rust, Go, C, C++, C#, F#, JavaScript, TypeScript, Java, JSON, HTML, CSS, Bash, Ruby, PHP, XML
+- bundled for install-on-demand in `BundledTreeSitterGrammars`: R, Lua, YAML, TOML, Markdown, CMake, Fortran, Pascal, MATLAB
 
 Grammar DLLs are built from source using `grammars/build-grammars.ps1`.
+
+The wider tree-sitter ecosystem has many more parsers. See the upstream parser list:
+
+- <https://github.com/tree-sitter/tree-sitter/wiki/List-of-parsers>
+
+Not every parser should be bundled by default. The bundled set should stay focused on broadly useful languages and avoid unusually large or niche parser packs.
+
+The practical policy is:
+
+- bundle mainstream languages and common project/config formats
+- prefer official or well-maintained parser repositories
+- avoid shipping very large parser collections or low-value niche grammars by default
+- let additional grammars be added separately when needed
+
+## Adding more grammars
+
+There are two different levels of support for additional grammars:
+
+1. Add a grammar package for manual use
+2. Add a grammar package plus auto-detect mapping
+
+### Manual grammar install
+
+The plugin discovers grammars dynamically at runtime from `TreeSitterGrammars`.
+
+If you place these files alongside the plugin:
+
+- `TreeSitterGrammars\tree-sitter-<language>.dll`
+- `TreeSitterGrammars\<language>-highlights.scm`
+- optional: `TreeSitterGrammars\<language>-locals.scm`
+- optional: `TreeSitterGrammars\<language>-tags.scm`
+- optional: `TreeSitterGrammars\<language>-injections.scm`
+
+then Notepad++ can expose that lexer as `treesitter.<language>` without rebuilding the plugin DLL.
+
+### Add a grammar to this repository
+
+1. Choose a parser from the upstream list above.
+2. Prefer repositories with:
+   - a valid `tree-sitter.json`
+   - either generated `src/parser.c` or a `grammar.js` that can be generated during the build
+   - `queries/highlights.scm`
+   - release tags or a stable tag to pin
+3. Add the repo and tag to `grammars/grammars.json`.
+4. Run `grammars\build-grammars.ps1` for the desired platform.
+5. Copy the generated `tree-sitter-*.dll` and `*-*.scm` files into `TreeSitterGrammars`.
+
+### Add auto-detect for a grammar
+
+Dynamic grammar discovery is already supported, but file-extension auto-detect is still configured in code.
+
+To make a newly added grammar auto-detect by file extension, update:
+
+- `src/dllmain.cpp` in `DetectTreeSitterLanguageForFile`
+- `src/dllmain.cpp` in `PreferBuiltInLexerForExtension`
+
+This keeps the runtime flexible while still letting bundled languages have predictable defaults.
+
+## Installing bundled grammars
+
+Release packages now include a `BundledTreeSitterGrammars` payload alongside the active `TreeSitterGrammars` directory.
+
+The `Install Missing Bundled Grammar` command copies the matching per-architecture grammar files from that bundled payload into `TreeSitterGrammars`, then activates the lexer for the current buffer.
+
+This is meant to work in an installed Notepad++ plugin directory, not only from a developer checkout.
+
+If a language is already present in `TreeSitterGrammars`, the command stays disabled because there is nothing to install.
 
 ## Building
 
@@ -61,7 +131,9 @@ cd grammars
 .\build-grammars.ps1 -Platform ARM64
 ```
 
-This clones each grammar repo listed in `grammars.json`, compiles the parser source into a DLL, and copies the `highlights.scm` query file.
+This downloads each grammar repo listed in `grammars.json`, compiles the parser source into a DLL, and copies the query files used by the plugin (`highlights`, `locals`, `injections`, `tags`) when they are available.
+
+The builder now refuses to bless incomplete cached source trees, refreshes broken extractions, and generates `src/parser.c` on demand for grammars that ship `grammar.js` instead of committing generated C sources.
 
 ## Installation
 
@@ -72,6 +144,7 @@ Copy files into your Notepad++ installation:
 <Notepad++>\plugins\TreeSitterLexer\TreeSitterGrammars\tree-sitter-python.dll
 <Notepad++>\plugins\TreeSitterLexer\TreeSitterGrammars\python-highlights.scm
 <Notepad++>\plugins\TreeSitterLexer\TreeSitterGrammars\...  (other languages)
+<Notepad++>\plugins\TreeSitterLexer\BundledTreeSitterGrammars\...  (bundled install payload)
 <Notepad++>\plugins\Config\TreeSitterLexer.xml
 ```
 
