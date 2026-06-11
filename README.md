@@ -8,6 +8,20 @@ From the Notepad++ menu:
 
 Instead of hand-written lexer rules, NppTreeSitter uses tree-sitter's incremental parsing to produce a full syntax tree, then maps tree-sitter highlight captures to Scintilla style IDs. This gives accurate, language-aware highlighting that understands the actual structure of the code.
 
+## Features
+
+Beyond highlighting and code folding, the syntax tree powers several editor commands, available from `Plugins -> TreeSitterLexer`:
+
+- **Auto-detect Tree-sitter Language** -- toggles switching to the matching `treesitter.*` lexer when a file with a known extension is opened.
+- **Install Missing Bundled Grammar** -- copies a bundled install-on-demand grammar into `TreeSitterGrammars` and activates it for the current file.
+- **Go to Definition / Select Definition** -- jumps to where the symbol under the caret is defined, using the grammar's `locals.scm` (scope-aware) and `tags.scm` queries.
+- **Go to Next / Previous Definition** (`Ctrl+Alt+Down` / `Ctrl+Alt+Up`) -- cycles through the functions, methods, and classes tagged by the grammar's `tags.scm` query, wrapping around at the ends of the buffer.
+- **Expand Selection** (`Ctrl+Alt+W`) -- grows the selection to the smallest enclosing syntax node; repeat to climb the tree one level at a time (identifier -> expression -> statement -> block -> function).
+- **Shrink Selection** (`Ctrl+Alt+Shift+W`) -- steps the expansion back down.
+- **Highlight Symbol Occurrences** -- marks every occurrence of the symbol under the caret. Matching is syntax-aware: only nodes with the same node type light up, so a variable named `count` does not match the word "count" inside strings or comments. Toggleable; on by default (skipped for files over 2 MB).
+
+Commands that need the syntax tree are only enabled while the active buffer uses a `treesitter.*` lexer. Default shortcuts can be changed in `Settings -> Shortcut Mapper -> Plugin commands`.
+
 ## How it works
 
 The plugin implements Scintilla's `ILexer5` interface and exports the [Lexilla](https://www.scintilla.org/LexillaDoc.html) API (`GetLexerCount`, `GetLexerName`, `CreateLexer`). Notepad++ discovers these at startup and registers each grammar as an external language (e.g. `treesitter.python`) in the Language menu.

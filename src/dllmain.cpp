@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <cwctype>
 #include <string>
 #include <unordered_map>
@@ -78,9 +79,13 @@ constexpr UINT NPPM_SETMENUITEMCHECK = NPPMSG + 40;
 
 constexpr UINT NPPN_READY = 1001;
 constexpr UINT NPPN_BUFFERACTIVATED = 1010;
+constexpr UINT NPPN_LANGCHANGED = 1011;
 
 constexpr int SC_UPDATE_SELECTION = 0x2;
 constexpr UINT SCN_UPDATEUI = 2007;
+constexpr UINT SCN_MODIFIED = 2008;
+constexpr int SC_MOD_INSERTTEXT = 0x1;
+constexpr int SC_MOD_DELETETEXT = 0x2;
 
 constexpr int STATUSBAR_CUR_POS = 2;
 
@@ -98,6 +103,24 @@ constexpr UINT SCI_GRABFOCUS = 2400;
 constexpr UINT SCI_GETTEXTRANGEFULL = 2039;
 constexpr UINT SCI_GETLEXERLANGUAGE = 4012;
 constexpr UINT SCI_SETILEXER = 4033;
+constexpr UINT SCI_GETDOCPOINTER = 2357;
+constexpr UINT SCI_INDICSETSTYLE = 2080;
+constexpr UINT SCI_INDICSETFORE = 2081;
+constexpr UINT SCI_SETINDICATORCURRENT = 2500;
+constexpr UINT SCI_INDICATORFILLRANGE = 2504;
+constexpr UINT SCI_INDICATORCLEARRANGE = 2505;
+constexpr UINT SCI_INDICSETUNDER = 2510;
+constexpr UINT SCI_INDICSETALPHA = 2523;
+constexpr UINT SCI_INDICSETOUTLINEALPHA = 2558;
+
+constexpr int INDIC_ROUNDBOX = 7;
+
+// Indicator slot for symbol occurrence highlighting. Chosen above the range
+// N++ uses for its own URL/search indicators and below the SCE_UNIVERSAL ones.
+constexpr int kOccurrenceIndicator = 17;
+
+// Skip per-caret-move reparsing on very large documents.
+constexpr Sci_Position kMaxOccurrenceDocBytes = 2 * 1024 * 1024;
 
 constexpr int MAIN_VIEW = 0;
 constexpr int SUB_VIEW = 1;
@@ -127,7 +150,7 @@ struct ShortcutKey
 };
 
 static const int menuItemSize = 64;
-static const int kFuncItemCount = 5;
+static const int kFuncItemCount = 13;
 
 struct FuncItem
 {
@@ -146,13 +169,20 @@ extern FuncItem g_funcItems[kFuncItemCount];
 static HMODULE g_hModule = nullptr;
 static NppData g_nppData = {};
 static bool g_autoDetectEnabled = true;
+static bool g_highlightOccurrencesEnabled = true;
 
 namespace {
 
+// Indices into g_funcItems (separators occupy 2, 7 and 11)
 constexpr int kAutoDetectCommandIndex = 0;
-constexpr int kGoToDefinitionCommandIndex = 1;
-constexpr int kSelectDefinitionCommandIndex = 2;
-constexpr int kInstallBundledGrammarCommandIndex = 3;
+constexpr int kInstallBundledGrammarCommandIndex = 1;
+constexpr int kGoToDefinitionCommandIndex = 3;
+constexpr int kSelectDefinitionCommandIndex = 4;
+constexpr int kNextDefinitionCommandIndex = 5;
+constexpr int kPrevDefinitionCommandIndex = 6;
+constexpr int kExpandSelectionCommandIndex = 8;
+constexpr int kShrinkSelectionCommandIndex = 9;
+constexpr int kHighlightOccurrencesCommandIndex = 10;
 
 std::string DetectTreeSitterLanguageForFile(const std::wstring& path);
 
@@ -704,6 +734,16 @@ std::string GetActiveTreeSitterLanguage(HWND hSci)
     return {};
 }
 
+const TreeSitterGrammar* GetActiveGrammar(HWND hSci)
+{
+    const std::string language = GetActiveTreeSitterLanguage(hSci);
+    if (language.empty())
+        return nullptr;
+
+    TreeSitterRegistry::Instance().Initialize(g_hModule);
+    return TreeSitterRegistry::Instance().GetGrammarByName(language);
+}
+
 std::string GetSetProperty(const TSQuery* query, uint32_t patternIndex, const std::string& key)
 {
     uint32_t stepCount = 0;
@@ -739,21 +779,15 @@ std::string GetSetProperty(const TSQuery* query, uint32_t patternIndex, const st
     return {};
 }
 
-SymbolOccurrence GetCurrentSymbolOccurrence(HWND hSci)
+SymbolOccurrence GetCurrentSymbolOccurrence(HWND hSci, const std::string& doc)
 {
     SymbolOccurrence occurrence;
-    if (!hSci)
+    if (!hSci || doc.empty())
         return occurrence;
 
     auto selStart = static_cast<Sci_Position>(::SendMessageW(hSci, SCI_GETSELECTIONSTART, 0, 0));
     auto selEnd = static_cast<Sci_Position>(::SendMessageW(hSci, SCI_GETSELECTIONEND, 0, 0));
-    const auto docLen = static_cast<Sci_Position>(::SendMessageW(hSci, SCI_GETLENGTH, 0, 0));
-    if (docLen <= 0)
-        return occurrence;
-
-    std::string doc = GetDocumentText(hSci);
-    if (doc.empty())
-        return occurrence;
+    const auto docLen = static_cast<Sci_Position>(doc.size());
 
     auto isWordChar = [](unsigned char ch) {
         return std::isalnum(ch) || ch == '_' || ch == '$' || ch == '\'';
@@ -1071,16 +1105,19 @@ void SetCommandEnabled(int commandIndex, bool enabled)
         MF_BYCOMMAND | (enabled ? MF_ENABLED : MF_GRAYED));
 }
 
-void UpdateAutoDetectCheck()
+void SetMenuItemChecked(int commandIndex, bool checked)
 {
-    if (g_funcItems[kAutoDetectCommandIndex]._cmdID == 0)
+    if (commandIndex < 0 || commandIndex >= kFuncItemCount)
+        return;
+
+    if (g_funcItems[commandIndex]._cmdID == 0)
         return;
 
     ::SendMessageW(
         g_nppData._nppHandle,
         NPPM_SETMENUITEMCHECK,
-        static_cast<WPARAM>(g_funcItems[kAutoDetectCommandIndex]._cmdID),
-        static_cast<LPARAM>(g_autoDetectEnabled ? TRUE : FALSE));
+        static_cast<WPARAM>(g_funcItems[commandIndex]._cmdID),
+        static_cast<LPARAM>(checked ? TRUE : FALSE));
 }
 
 const TagEntry* FindDefinitionAtCaret(HWND hSci)
@@ -1088,21 +1125,16 @@ const TagEntry* FindDefinitionAtCaret(HWND hSci)
     if (!hSci)
         return nullptr;
 
-    const std::string language = GetActiveTreeSitterLanguage(hSci);
-    if (language.empty())
-        return nullptr;
-
-    TreeSitterRegistry::Instance().Initialize(g_hModule);
-    const TreeSitterGrammar* grammar = TreeSitterRegistry::Instance().GetGrammarByName(language);
+    const TreeSitterGrammar* grammar = GetActiveGrammar(hSci);
     if (!grammar)
-        return nullptr;
-
-    const SymbolOccurrence symbol = GetCurrentSymbolOccurrence(hSci);
-    if (!symbol.valid)
         return nullptr;
 
     const std::string docText = GetDocumentText(hSci);
     if (docText.empty())
+        return nullptr;
+
+    const SymbolOccurrence symbol = GetCurrentSymbolOccurrence(hSci, docText);
+    if (!symbol.valid)
         return nullptr;
 
     const TagEntry* best = FindLocalDefinitionAtCaret(grammar, docText, symbol);
@@ -1150,6 +1182,388 @@ void UpdateInstallBundledGrammarCommandState()
 {
     HWND hSci = GetCurrentScintilla();
     SetCommandEnabled(kInstallBundledGrammarCommandIndex, CanInstallBundledGrammarForCurrentFile(hSci));
+}
+
+void UpdateSyntaxCommandStates()
+{
+    HWND hSci = GetCurrentScintilla();
+    const bool hasTreeSitter = !GetActiveTreeSitterLanguage(hSci).empty();
+    SetCommandEnabled(kNextDefinitionCommandIndex, hasTreeSitter);
+    SetCommandEnabled(kPrevDefinitionCommandIndex, hasTreeSitter);
+    SetCommandEnabled(kExpandSelectionCommandIndex, hasTreeSitter);
+    SetCommandEnabled(kShrinkSelectionCommandIndex, hasTreeSitter);
+}
+
+// ============================================================================
+// Shared parse helper for the interactive commands below
+// ============================================================================
+struct ParsedDocument {
+    TSParser* parser = nullptr;
+    TSTree* tree = nullptr;
+
+    ~ParsedDocument()
+    {
+        if (tree)
+            ts_tree_delete(tree);
+        if (parser)
+            ts_parser_delete(parser);
+    }
+
+    bool Parse(const TreeSitterGrammar* grammar, const std::string& docText)
+    {
+        if (!grammar || !grammar->GetLanguage() || docText.empty())
+            return false;
+
+        parser = ts_parser_new();
+        if (!parser)
+            return false;
+
+        ts_parser_set_language(parser, grammar->GetLanguage());
+        tree = ts_parser_parse_string(parser, nullptr, docText.c_str(),
+            static_cast<uint32_t>(docText.size()));
+        return tree != nullptr;
+    }
+};
+
+UINT_PTR GetCurrentBufferId()
+{
+    return static_cast<UINT_PTR>(::SendMessageW(g_nppData._nppHandle, NPPM_GETCURRENTBUFFERID, 0, 0));
+}
+
+// ============================================================================
+// Syntax-aware selection expansion (grow to enclosing AST node) and shrink
+// ============================================================================
+struct SelectionStep {
+    UINT_PTR bufferId = 0;
+    Sci_Position prevStart = 0;
+    Sci_Position prevEnd = 0;
+    Sci_Position newStart = 0;
+    Sci_Position newEnd = 0;
+};
+
+std::vector<SelectionStep> g_selectionHistory;
+
+void expandSyntaxSelection()
+{
+    HWND hSci = GetCurrentScintilla();
+    const TreeSitterGrammar* grammar = GetActiveGrammar(hSci);
+    if (!grammar) {
+        ShowStatus(L"TreeSitterLexer: current buffer is not using a tree-sitter lexer");
+        return;
+    }
+
+    const std::string docText = GetDocumentText(hSci);
+    ParsedDocument doc;
+    if (!doc.Parse(grammar, docText)) {
+        ShowStatus(L"TreeSitterLexer: could not parse the current document");
+        return;
+    }
+
+    auto selStart = static_cast<Sci_Position>(::SendMessageW(hSci, SCI_GETSELECTIONSTART, 0, 0));
+    auto selEnd = static_cast<Sci_Position>(::SendMessageW(hSci, SCI_GETSELECTIONEND, 0, 0));
+    if (selStart < 0 || selEnd < selStart || selEnd > static_cast<Sci_Position>(docText.size()))
+        return;
+
+    TSNode root = ts_tree_root_node(doc.tree);
+    TSNode node = ts_node_named_descendant_for_byte_range(root,
+        static_cast<uint32_t>(selStart), static_cast<uint32_t>(selEnd));
+
+    // Climb past nodes whose range equals the current selection so each
+    // invocation grows the selection by one syntactic level.
+    while (!ts_node_is_null(node) &&
+           static_cast<Sci_Position>(ts_node_start_byte(node)) == selStart &&
+           static_cast<Sci_Position>(ts_node_end_byte(node)) == selEnd) {
+        node = ts_node_parent(node);
+    }
+
+    if (ts_node_is_null(node)) {
+        ShowStatus(L"TreeSitterLexer: nothing larger to select");
+        return;
+    }
+
+    const auto nodeStart = static_cast<Sci_Position>(ts_node_start_byte(node));
+    const auto nodeEnd = static_cast<Sci_Position>(ts_node_end_byte(node));
+
+    const UINT_PTR bufferId = GetCurrentBufferId();
+    if (!g_selectionHistory.empty() &&
+        (g_selectionHistory.back().bufferId != bufferId ||
+         g_selectionHistory.back().newStart != selStart ||
+         g_selectionHistory.back().newEnd != selEnd)) {
+        g_selectionHistory.clear();
+    }
+    g_selectionHistory.push_back({ bufferId, selStart, selEnd, nodeStart, nodeEnd });
+
+    ::SendMessageW(hSci, SCI_SETSEL, static_cast<WPARAM>(nodeStart), static_cast<LPARAM>(nodeEnd));
+
+    const char* nodeType = ts_node_type(node);
+    std::wstring status = L"TreeSitterLexer: selected ";
+    if (nodeType) {
+        const std::string typeName(nodeType);
+        status.append(typeName.begin(), typeName.end());
+    }
+    ShowStatus(status);
+}
+
+void shrinkSyntaxSelection()
+{
+    HWND hSci = GetCurrentScintilla();
+    if (!hSci)
+        return;
+
+    const auto selStart = static_cast<Sci_Position>(::SendMessageW(hSci, SCI_GETSELECTIONSTART, 0, 0));
+    const auto selEnd = static_cast<Sci_Position>(::SendMessageW(hSci, SCI_GETSELECTIONEND, 0, 0));
+
+    if (g_selectionHistory.empty() ||
+        g_selectionHistory.back().bufferId != GetCurrentBufferId() ||
+        g_selectionHistory.back().newStart != selStart ||
+        g_selectionHistory.back().newEnd != selEnd) {
+        g_selectionHistory.clear();
+        ShowStatus(L"TreeSitterLexer: no selection expansion to undo");
+        return;
+    }
+
+    const SelectionStep step = g_selectionHistory.back();
+    g_selectionHistory.pop_back();
+    ::SendMessageW(hSci, SCI_SETSEL, static_cast<WPARAM>(step.prevStart), static_cast<LPARAM>(step.prevEnd));
+    ShowStatus(L"TreeSitterLexer: selection shrunk");
+}
+
+// ============================================================================
+// Symbol occurrence highlighting - marks identifiers that share both the
+// text and the syntax node type of the symbol under the caret, so matches
+// inside strings and comments are not highlighted.
+// ============================================================================
+
+// Last applied highlight state; caret moves that keep the same symbol in an
+// unmodified document skip the reparse entirely.
+struct OccurrenceCache {
+    LRESULT docPointer = 0;
+    std::string name;
+    uint32_t startByte = 0;
+    uint32_t endByte = 0;
+    bool valid = false;
+};
+
+OccurrenceCache g_occurrenceCache;
+bool g_occurrenceTextDirty = false;
+
+void EnsureOccurrenceIndicatorStyle(HWND hSci)
+{
+    static std::unordered_set<HWND> styledViews;
+    if (!styledViews.insert(hSci).second)
+        return;
+
+    ::SendMessageW(hSci, SCI_INDICSETSTYLE, kOccurrenceIndicator, INDIC_ROUNDBOX);
+    ::SendMessageW(hSci, SCI_INDICSETFORE, kOccurrenceIndicator, RGB(0x33, 0x99, 0xFF));
+    ::SendMessageW(hSci, SCI_INDICSETALPHA, kOccurrenceIndicator, 60);
+    ::SendMessageW(hSci, SCI_INDICSETOUTLINEALPHA, kOccurrenceIndicator, 150);
+    ::SendMessageW(hSci, SCI_INDICSETUNDER, kOccurrenceIndicator, TRUE);
+}
+
+void ClearOccurrenceHighlights(HWND hSci)
+{
+    g_occurrenceCache.valid = false;
+    if (!hSci)
+        return;
+
+    const auto docLen = static_cast<Sci_Position>(::SendMessageW(hSci, SCI_GETLENGTH, 0, 0));
+    ::SendMessageW(hSci, SCI_SETINDICATORCURRENT, kOccurrenceIndicator, 0);
+    ::SendMessageW(hSci, SCI_INDICATORCLEARRANGE, 0, static_cast<LPARAM>(docLen));
+}
+
+void UpdateOccurrenceHighlights(HWND hSci)
+{
+    if (!hSci)
+        return;
+
+    if (!g_highlightOccurrencesEnabled) {
+        ClearOccurrenceHighlights(hSci);
+        return;
+    }
+
+    const TreeSitterGrammar* grammar = GetActiveGrammar(hSci);
+    if (!grammar) {
+        ClearOccurrenceHighlights(hSci);
+        return;
+    }
+
+    const auto docLen = static_cast<Sci_Position>(::SendMessageW(hSci, SCI_GETLENGTH, 0, 0));
+    if (docLen > kMaxOccurrenceDocBytes) {
+        ClearOccurrenceHighlights(hSci);
+        return;
+    }
+
+    const std::string docText = GetDocumentText(hSci);
+    const SymbolOccurrence symbol = GetCurrentSymbolOccurrence(hSci, docText);
+    if (!symbol.valid || symbol.endByte > docText.size()) {
+        ClearOccurrenceHighlights(hSci);
+        return;
+    }
+
+    const auto docPointer = static_cast<LRESULT>(::SendMessageW(hSci, SCI_GETDOCPOINTER, 0, 0));
+    if (g_occurrenceCache.valid && !g_occurrenceTextDirty &&
+        g_occurrenceCache.docPointer == docPointer &&
+        g_occurrenceCache.startByte == symbol.startByte &&
+        g_occurrenceCache.endByte == symbol.endByte &&
+        g_occurrenceCache.name == symbol.name) {
+        return;
+    }
+
+    ParsedDocument doc;
+    if (!doc.Parse(grammar, docText)) {
+        ClearOccurrenceHighlights(hSci);
+        return;
+    }
+
+    TSNode root = ts_tree_root_node(doc.tree);
+    TSNode caretNode = ts_node_named_descendant_for_byte_range(root, symbol.startByte, symbol.endByte);
+
+    // Only highlight when the caret symbol is itself a syntax node
+    // (i.e. not a word inside a string or comment).
+    if (ts_node_is_null(caretNode) ||
+        ts_node_start_byte(caretNode) != symbol.startByte ||
+        ts_node_end_byte(caretNode) != symbol.endByte) {
+        ClearOccurrenceHighlights(hSci);
+        return;
+    }
+
+    const char* caretType = ts_node_type(caretNode);
+    if (!caretType) {
+        ClearOccurrenceHighlights(hSci);
+        return;
+    }
+
+    const uint32_t symbolLen = symbol.endByte - symbol.startByte;
+
+    std::vector<std::pair<uint32_t, uint32_t>> matches;
+    std::vector<TSNode> stack;
+    stack.push_back(root);
+    while (!stack.empty()) {
+        TSNode node = stack.back();
+        stack.pop_back();
+
+        const uint32_t nodeStart = ts_node_start_byte(node);
+        const uint32_t nodeEnd = ts_node_end_byte(node);
+        if (nodeEnd - nodeStart < symbolLen)
+            continue;
+
+        if (nodeEnd - nodeStart == symbolLen && ts_node_is_named(node) &&
+            std::strcmp(ts_node_type(node), caretType) == 0 &&
+            docText.compare(nodeStart, symbolLen, symbol.name) == 0) {
+            matches.emplace_back(nodeStart, nodeEnd);
+        }
+
+        const uint32_t childCount = ts_node_child_count(node);
+        for (uint32_t i = 0; i < childCount; ++i)
+            stack.push_back(ts_node_child(node, i));
+    }
+
+    EnsureOccurrenceIndicatorStyle(hSci);
+    ::SendMessageW(hSci, SCI_SETINDICATORCURRENT, kOccurrenceIndicator, 0);
+    ::SendMessageW(hSci, SCI_INDICATORCLEARRANGE, 0, static_cast<LPARAM>(docLen));
+    for (const auto& m : matches) {
+        ::SendMessageW(hSci, SCI_INDICATORFILLRANGE, static_cast<WPARAM>(m.first),
+            static_cast<LPARAM>(m.second - m.first));
+    }
+
+    g_occurrenceCache.docPointer = docPointer;
+    g_occurrenceCache.name = symbol.name;
+    g_occurrenceCache.startByte = symbol.startByte;
+    g_occurrenceCache.endByte = symbol.endByte;
+    g_occurrenceCache.valid = true;
+    g_occurrenceTextDirty = false;
+}
+
+void toggleHighlightOccurrences()
+{
+    g_highlightOccurrencesEnabled = !g_highlightOccurrencesEnabled;
+    SetMenuItemChecked(kHighlightOccurrencesCommandIndex, g_highlightOccurrencesEnabled);
+
+    if (g_highlightOccurrencesEnabled) {
+        UpdateOccurrenceHighlights(GetCurrentScintilla());
+        ShowStatus(L"TreeSitterLexer: symbol occurrence highlighting enabled");
+    } else {
+        // Indicators live in the documents shown in either view; clear both.
+        ClearOccurrenceHighlights(g_nppData._scintillaMainHandle);
+        ClearOccurrenceHighlights(g_nppData._scintillaSecondHandle);
+        ShowStatus(L"TreeSitterLexer: symbol occurrence highlighting disabled");
+    }
+}
+
+// ============================================================================
+// Definition navigation - jump between tagged definitions (functions,
+// methods, classes, ...) from the grammar's tags query.
+// ============================================================================
+void NavigateDefinition(bool forward)
+{
+    HWND hSci = GetCurrentScintilla();
+    const TreeSitterGrammar* grammar = GetActiveGrammar(hSci);
+    if (!grammar) {
+        ShowStatus(L"TreeSitterLexer: current buffer is not using a tree-sitter lexer");
+        return;
+    }
+    if (!grammar->GetTagsQuery()) {
+        ShowStatus(L"TreeSitterLexer: no tags query available for this language");
+        return;
+    }
+
+    const std::string docText = GetDocumentText(hSci);
+    std::vector<TagEntry> definitions;
+    for (auto& tag : CollectTags(grammar, docText)) {
+        if (tag.role == "definition")
+            definitions.push_back(std::move(tag));
+    }
+    if (definitions.empty()) {
+        ShowStatus(L"TreeSitterLexer: no definitions found in current buffer");
+        return;
+    }
+
+    std::sort(definitions.begin(), definitions.end(),
+        [](const TagEntry& a, const TagEntry& b) { return a.startByte < b.startByte; });
+
+    const auto caretPos = static_cast<Sci_Position>(::SendMessageW(hSci, SCI_GETCURRENTPOS, 0, 0));
+
+    // First definition strictly after the caret; everything before that
+    // (exclusive of definitions at the caret itself) is "behind" the caret.
+    const auto firstAfter = std::upper_bound(definitions.begin(), definitions.end(), caretPos,
+        [](Sci_Position pos, const TagEntry& def) {
+            return pos < static_cast<Sci_Position>(def.startByte);
+        });
+    const auto firstAtOrAfter = std::lower_bound(definitions.begin(), definitions.end(), caretPos,
+        [](const TagEntry& def, Sci_Position pos) {
+            return static_cast<Sci_Position>(def.startByte) < pos;
+        });
+
+    size_t index = 0;
+    bool wrapped = false;
+    if (forward) {
+        wrapped = firstAfter == definitions.end();
+        index = wrapped ? 0 : static_cast<size_t>(firstAfter - definitions.begin());
+    } else {
+        wrapped = firstAtOrAfter == definitions.begin();
+        index = (wrapped ? definitions.size() : static_cast<size_t>(firstAtOrAfter - definitions.begin())) - 1;
+    }
+    const TagEntry* target = &definitions[index];
+
+    NavigateToPosition(hSci, static_cast<Sci_Position>(target->startByte));
+
+    std::wstring status = L"TreeSitterLexer: ";
+    if (!target->kind.empty()) {
+        status.append(target->kind.begin(), target->kind.end());
+        status += L' ';
+    }
+    status.append(target->name.begin(), target->name.end());
+    if (wrapped)
+        status += L" (wrapped)";
+    ShowStatus(status);
+}
+
+void goToNextDefinition() {
+    NavigateDefinition(true);
+}
+
+void goToPreviousDefinition() {
+    NavigateDefinition(false);
 }
 
 void autoDetectTreeSitterLanguage()
@@ -1211,7 +1625,7 @@ void autoDetectTreeSitterLanguage()
 void toggleAutoDetectTreeSitterLanguage()
 {
     g_autoDetectEnabled = !g_autoDetectEnabled;
-    UpdateAutoDetectCheck();
+    SetMenuItemChecked(kAutoDetectCommandIndex, g_autoDetectEnabled);
 
     if (g_autoDetectEnabled) {
         autoDetectTreeSitterLanguage();
@@ -1332,11 +1746,26 @@ static void aboutDlg()
         MB_OK | MB_ICONINFORMATION);
 }
 
+// Default shortcuts (users can remap them in the Shortcut Mapper)
+static ShortcutKey g_nextDefinitionKey   = { true, true, false, VK_DOWN };
+static ShortcutKey g_prevDefinitionKey   = { true, true, false, VK_UP };
+static ShortcutKey g_expandSelectionKey  = { true, true, false, 'W' };
+static ShortcutKey g_shrinkSelectionKey  = { true, true, true,  'W' };
+
+// A null _pFunc renders as a menu separator in Notepad++
 FuncItem g_funcItems[] = {
     { L"Auto-detect Tree-sitter Language", toggleAutoDetectTreeSitterLanguage, 0, false, nullptr },
+    { L"Install Missing Bundled Grammar", installMissingBundledGrammar, 0, false, nullptr },
+    { L"---", nullptr, 0, false, nullptr },
     { L"Go to Definition", goToCurrentSymbolDefinition, 0, false, nullptr },
     { L"Select Definition", selectCurrentSymbolDefinition, 0, false, nullptr },
-    { L"Install Missing Bundled Grammar", installMissingBundledGrammar, 0, false, nullptr },
+    { L"Go to Next Definition", goToNextDefinition, 0, false, &g_nextDefinitionKey },
+    { L"Go to Previous Definition", goToPreviousDefinition, 0, false, &g_prevDefinitionKey },
+    { L"---", nullptr, 0, false, nullptr },
+    { L"Expand Selection", expandSyntaxSelection, 0, false, &g_expandSelectionKey },
+    { L"Shrink Selection", shrinkSyntaxSelection, 0, false, &g_shrinkSelectionKey },
+    { L"Highlight Symbol Occurrences", toggleHighlightOccurrences, 0, true, nullptr },
+    { L"---", nullptr, 0, false, nullptr },
     { L"About TreeSitterLexer", aboutDlg, 0, false, nullptr }
 };
 
@@ -1379,22 +1808,38 @@ __declspec(dllexport) void __cdecl beNotified(SCNotification* notifyCode)
 
     switch (notifyCode->nmhdr.code) {
     case NPPN_READY:
-        UpdateAutoDetectCheck();
+        SetMenuItemChecked(kAutoDetectCommandIndex, g_autoDetectEnabled);
+        SetMenuItemChecked(kHighlightOccurrencesCommandIndex, g_highlightOccurrencesEnabled);
         if (g_autoDetectEnabled)
             autoDetectTreeSitterLanguage();
         UpdateDefinitionCommandState();
         UpdateInstallBundledGrammarCommandState();
+        UpdateSyntaxCommandStates();
         break;
     case NPPN_BUFFERACTIVATED:
         if (g_autoDetectEnabled)
             autoDetectTreeSitterLanguage();
         UpdateDefinitionCommandState();
         UpdateInstallBundledGrammarCommandState();
+        UpdateSyntaxCommandStates();
+        UpdateOccurrenceHighlights(GetCurrentScintilla());
+        break;
+    case NPPN_LANGCHANGED:
+        UpdateDefinitionCommandState();
+        UpdateSyntaxCommandStates();
+        UpdateOccurrenceHighlights(GetCurrentScintilla());
+        break;
+    case SCN_MODIFIED:
+        if (notifyCode->modificationType & (SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT))
+            g_occurrenceTextDirty = true;
         break;
     case SCN_UPDATEUI:
         if (notifyCode->updated & SC_UPDATE_SELECTION) {
             UpdateDefinitionCommandState();
             UpdateInstallBundledGrammarCommandState();
+            // Use the view that fired the notification, not the focused one;
+            // in split view they can differ.
+            UpdateOccurrenceHighlights(notifyCode->nmhdr.hwndFrom);
         }
         break;
     }
