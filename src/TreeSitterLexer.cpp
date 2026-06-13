@@ -1044,11 +1044,48 @@ void SCI_METHOD TreeSitterILexer::Fold(Sci_PositionU startPos, Sci_Position leng
 
     // Apply fold levels
     constexpr int SC_FOLDLEVELBASE = 0x400;
+    constexpr int SC_FOLDLEVELWHITEFLAG = 0x1000;
     constexpr int SC_FOLDLEVELHEADERFLAG = 0x2000;
+    constexpr int SC_FOLDLEVELNUMBERMASK = 0x0FFF;
 
-    for (Sci_Position line = startLine; line <= endLine; line++) {
-        Sci_Position idx = line - startLine;
+    // Blank (whitespace-only) lines must not terminate a fold. A blank line has
+    // no token on it, so the "deepest node touching it" can be a shallow
+    // enclosing node whose level is <= the surrounding header's level, which
+    // makes Scintilla end the fold at the blank line (GitHub issue #3). The fix
+    // is the standard Scintilla convention: flag blank lines with
+    // SC_FOLDLEVELWHITEFLAG and give them the level of the next non-blank line,
+    // so the fold "looks through" them instead of stopping.
+    const char* docText = pAccess->BufferPointer();
+    auto isBlankLine = [&](Sci_Position line) -> bool {
+        if (!docText)
+            return false;
+        const Sci_Position s = pAccess->LineStart(line);
+        const Sci_Position e = pAccess->LineEnd(line);
+        for (Sci_Position p = s; p < e; ++p) {
+            const char c = docText[p];
+            if (c != ' ' && c != '\t' && c != '\r' && c != '\n')
+                return false;
+        }
+        return true;
+    };
+
+    // Seed the "next non-blank level" from just past the fold range so trailing
+    // blank lines inherit the following content's level. Walk bottom-up so each
+    // blank line picks up the nearest non-blank line below it.
+    const Sci_Position lastLine = pAccess->LineFromPosition(docLen);
+    int nextLevel = (endLine < lastLine)
+        ? (pAccess->GetLevel(endLine + 1) & SC_FOLDLEVELNUMBERMASK)
+        : SC_FOLDLEVELBASE;
+
+    for (Sci_Position line = endLine; line >= startLine; --line) {
+        const Sci_Position idx = line - startLine;
+        if (isBlankLine(line)) {
+            // White line: never a header; level deferred to the next non-blank line.
+            pAccess->SetLevel(line, nextLevel | SC_FOLDLEVELWHITEFLAG);
+            continue;
+        }
         int level = SC_FOLDLEVELBASE + foldInfo[idx].level;
+        nextLevel = level & SC_FOLDLEVELNUMBERMASK;
         if (foldInfo[idx].isHeader)
             level |= SC_FOLDLEVELHEADERFLAG;
         pAccess->SetLevel(line, level);
