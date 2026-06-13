@@ -483,6 +483,26 @@ struct LexHighlight {
     uint32_t pattern;  // higher pattern index = higher priority
 };
 
+// Compute the tree-sitter point (row, byte-column) at a byte offset in text.
+// Used to fill a TSInputEdit's start/old-end/new-end points for ts_tree_edit().
+static TSPoint PointAtByte(const char* text, uint32_t len, uint32_t byteOffset)
+{
+    if (byteOffset > len)
+        byteOffset = len;
+    uint32_t row = 0;
+    uint32_t lineStart = 0;  // byte index just past the last '\n' before byteOffset
+    for (uint32_t i = 0; i < byteOffset; i++) {
+        if (text[i] == '\n') {
+            row++;
+            lineStart = i + 1;
+        }
+    }
+    TSPoint pt;
+    pt.row = row;
+    pt.column = byteOffset - lineStart;
+    return pt;
+}
+
 // ---------------------------------------------------------------------------
 // Lex() - The core: parse document with tree-sitter, apply Scintilla styles
 // ---------------------------------------------------------------------------
@@ -498,15 +518,59 @@ void SCI_METHOD TreeSitterILexer::Lex(Sci_PositionU startPos, Sci_Position lengt
     if (!docText || docLen == 0)
         return;
 
-    // Parse the full document
-    if (m_tree) {
+    // Parse the document. When we have a tree from a previous Lex() call, derive
+    // a TSInputEdit by diffing the old and new text (common prefix + suffix),
+    // edit the old tree, and hand it back to the parser so unchanged subtrees are
+    // reused. This turns the per-keystroke cost from O(document) to roughly
+    // O(edit size + reused-subtree fixups), which matters for large files.
+    // Falls back to a full reparse when there is no prior tree.
+    const std::string newText(docText, static_cast<size_t>(docLen));
+
+    if (m_tree && !m_lastText.empty()) {
+        const std::string& oldText = m_lastText;
+        const uint32_t oldLen = static_cast<uint32_t>(oldText.size());
+        const uint32_t newLen = static_cast<uint32_t>(newText.size());
+
+        // Longest common prefix.
+        uint32_t prefix = 0;
+        const uint32_t maxPrefix = (oldLen < newLen) ? oldLen : newLen;
+        while (prefix < maxPrefix && oldText[prefix] == newText[prefix])
+            prefix++;
+
+        // Longest common suffix that does not overlap the shared prefix.
+        uint32_t suffix = 0;
+        const uint32_t maxSuffix = maxPrefix - prefix;
+        while (suffix < maxSuffix &&
+               oldText[oldLen - 1 - suffix] == newText[newLen - 1 - suffix])
+            suffix++;
+
+        TSInputEdit edit;
+        edit.start_byte    = prefix;
+        edit.old_end_byte  = oldLen - suffix;
+        edit.new_end_byte  = newLen - suffix;
+        edit.start_point   = PointAtByte(oldText.data(), oldLen, edit.start_byte);
+        edit.old_end_point = PointAtByte(oldText.data(), oldLen, edit.old_end_byte);
+        edit.new_end_point = PointAtByte(newText.data(), newLen, edit.new_end_byte);
+        ts_tree_edit(m_tree, &edit);
+
+        TSTree* newTree = ts_parser_parse_string(m_parser, m_tree,
+                                                 docText, static_cast<uint32_t>(docLen));
         ts_tree_delete(m_tree);
-        m_tree = nullptr;
+        m_tree = newTree;
+    } else {
+        if (m_tree) {
+            ts_tree_delete(m_tree);
+            m_tree = nullptr;
+        }
+        m_tree = ts_parser_parse_string(m_parser, nullptr,
+                                         docText, static_cast<uint32_t>(docLen));
     }
-    m_tree = ts_parser_parse_string(m_parser, nullptr,
-                                     docText, static_cast<uint32_t>(docLen));
-    if (!m_tree)
+
+    if (!m_tree) {
+        m_lastText.clear();
         return;
+    }
+    m_lastText = newText;
 
     // Compute the byte range to style
     Sci_PositionU endPos = startPos + static_cast<Sci_PositionU>(lengthDoc);

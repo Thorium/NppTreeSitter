@@ -163,6 +163,11 @@ private:
     TSTree*                  m_tree;
     std::string              m_lexerName;  // "treesitter.<lang>"
 
+    // Snapshot of the document text from the previous Lex() call. Used to
+    // derive a TSInputEdit (common prefix/suffix diff) so the existing tree
+    // can be reused for incremental reparsing instead of a full reparse.
+    std::string              m_lastText;
+
     // Properties
     bool m_fold;
 };

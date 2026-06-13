@@ -150,7 +150,7 @@ struct ShortcutKey
 };
 
 static const int menuItemSize = 64;
-static const int kFuncItemCount = 13;
+static const int kFuncItemCount = 14;
 
 struct FuncItem
 {
@@ -173,7 +173,7 @@ static bool g_highlightOccurrencesEnabled = true;
 
 namespace {
 
-// Indices into g_funcItems (separators occupy 2, 7 and 11)
+// Indices into g_funcItems (separators occupy 2, 7 and 12)
 constexpr int kAutoDetectCommandIndex = 0;
 constexpr int kInstallBundledGrammarCommandIndex = 1;
 constexpr int kGoToDefinitionCommandIndex = 3;
@@ -183,6 +183,7 @@ constexpr int kPrevDefinitionCommandIndex = 6;
 constexpr int kExpandSelectionCommandIndex = 8;
 constexpr int kShrinkSelectionCommandIndex = 9;
 constexpr int kHighlightOccurrencesCommandIndex = 10;
+constexpr int kShowSymbolPathCommandIndex = 11;
 
 std::string DetectTreeSitterLanguageForFile(const std::wstring& path);
 
@@ -1192,6 +1193,7 @@ void UpdateSyntaxCommandStates()
     SetCommandEnabled(kPrevDefinitionCommandIndex, hasTreeSitter);
     SetCommandEnabled(kExpandSelectionCommandIndex, hasTreeSitter);
     SetCommandEnabled(kShrinkSelectionCommandIndex, hasTreeSitter);
+    SetCommandEnabled(kShowSymbolPathCommandIndex, hasTreeSitter);
 }
 
 // ============================================================================
@@ -1326,6 +1328,103 @@ void shrinkSyntaxSelection()
     g_selectionHistory.pop_back();
     ::SendMessageW(hSci, SCI_SETSEL, static_cast<WPARAM>(step.prevStart), static_cast<LPARAM>(step.prevEnd));
     ShowStatus(L"TreeSitterLexer: selection shrunk");
+}
+
+// ============================================================================
+// Symbol breadcrumb: show the enclosing definition path at the caret
+// (e.g. "MyClass.MyMethod"). Ported from WinMerge's GetEnclosingSymbols.
+// ============================================================================
+
+// Heuristic: does this AST node type represent a named definition?
+// Matches the node-type names used across tree-sitter grammars for functions,
+// methods, types and modules (e.g. "function_definition", "class_specifier",
+// "impl_item", "namespace_definition"); excludes call/invocation nodes.
+static bool IsDefinitionLikeNodeType(const char* type)
+{
+    if (!type || strstr(type, "call") != nullptr)
+        return false;
+    static const char* const keywords[] = {
+        "function", "method", "class", "struct", "interface",
+        "namespace", "module", "impl", "trait", "enum", "constructor",
+    };
+    for (const char* kw : keywords) {
+        if (strstr(type, kw) != nullptr)
+            return true;
+    }
+    return false;
+}
+
+void showSymbolPath()
+{
+    HWND hSci = GetCurrentScintilla();
+    const TreeSitterGrammar* grammar = GetActiveGrammar(hSci);
+    if (!grammar) {
+        ShowStatus(L"TreeSitterLexer: current buffer is not using a tree-sitter lexer");
+        return;
+    }
+
+    const std::string docText = GetDocumentText(hSci);
+    ParsedDocument doc;
+    if (!doc.Parse(grammar, docText)) {
+        ShowStatus(L"TreeSitterLexer: could not parse the current document");
+        return;
+    }
+
+    auto caret = static_cast<Sci_Position>(::SendMessageW(hSci, SCI_GETCURRENTPOS, 0, 0));
+    if (caret < 0 || caret > static_cast<Sci_Position>(docText.size()))
+        return;
+
+    const uint32_t byteOffset = static_cast<uint32_t>(caret);
+    TSNode node = ts_node_descendant_for_byte_range(
+        ts_tree_root_node(doc.tree), byteOffset, byteOffset);
+
+    // Collect enclosing definition names, innermost first. Requiring a "body"
+    // field filters out references/invocations and forward declarations that
+    // match the type-name heuristic but are not real definitions.
+    std::vector<std::string> names;
+    while (!ts_node_is_null(node)) {
+        if (IsDefinitionLikeNodeType(ts_node_type(node)) &&
+            !ts_node_is_null(ts_node_child_by_field_name(node, "body", 4))) {
+            // Most grammars expose the symbol as a "name" field; C/C++ use a
+            // (possibly nested) "declarator" field instead.
+            TSNode nameNode = ts_node_child_by_field_name(node, "name", 4);
+            if (ts_node_is_null(nameNode)) {
+                TSNode declNode = ts_node_child_by_field_name(node, "declarator", 10);
+                while (!ts_node_is_null(declNode)) {
+                    TSNode inner = ts_node_child_by_field_name(declNode, "declarator", 10);
+                    if (ts_node_is_null(inner))
+                        break;
+                    declNode = inner;
+                }
+                nameNode = declNode;
+            }
+            if (!ts_node_is_null(nameNode)) {
+                const uint32_t s = ts_node_start_byte(nameNode);
+                const uint32_t e = ts_node_end_byte(nameNode);
+                if (s < e && e <= docText.size() && e - s <= 256)
+                    names.push_back(docText.substr(s, e - s));
+            }
+        }
+        node = ts_node_parent(node);
+    }
+
+    if (names.empty()) {
+        ShowStatus(L"TreeSitterLexer: not inside a named definition");
+        return;
+    }
+
+    // Join outermost -> innermost, keeping at most the 3 innermost names.
+    const size_t nCount = names.size() < 3 ? names.size() : 3;
+    std::string joined;
+    for (size_t i = nCount; i-- > 0; ) {
+        if (!joined.empty())
+            joined += '.';
+        joined += names[i];
+    }
+
+    std::wstring status = L"TreeSitterLexer: ";
+    status.append(joined.begin(), joined.end());  // ASCII-ish symbol names
+    ShowStatus(status);
 }
 
 // ============================================================================
@@ -1765,6 +1864,7 @@ FuncItem g_funcItems[] = {
     { L"Expand Selection", expandSyntaxSelection, 0, false, &g_expandSelectionKey },
     { L"Shrink Selection", shrinkSyntaxSelection, 0, false, &g_shrinkSelectionKey },
     { L"Highlight Symbol Occurrences", toggleHighlightOccurrences, 0, true, nullptr },
+    { L"Show Symbol Path", showSymbolPath, 0, false, nullptr },
     { L"---", nullptr, 0, false, nullptr },
     { L"About TreeSitterLexer", aboutDlg, 0, false, nullptr }
 };
