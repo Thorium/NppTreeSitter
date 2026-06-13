@@ -76,6 +76,7 @@ constexpr UINT NPPM_MENUCOMMAND = NPPMSG + 48;
 constexpr UINT NPPM_GETMENUHANDLE = NPPMSG + 25;
 constexpr UINT NPPM_SETSTATUSBAR = NPPMSG + 24;
 constexpr UINT NPPM_SETMENUITEMCHECK = NPPMSG + 40;
+constexpr UINT NPPM_GETPLUGINSCONFIGDIR = NPPMSG + 46;
 
 constexpr UINT NPPN_READY = 1001;
 constexpr UINT NPPN_BUFFERACTIVATED = 1010;
@@ -428,6 +429,18 @@ std::wstring GetModuleDirectory()
     const auto pos = dir.rfind(L'\\');
     if (pos != std::wstring::npos)
         dir.resize(pos);
+    return dir;
+}
+
+std::wstring GetPluginConfigDirectory()
+{
+    const LRESULT pathLen = ::SendMessageW(g_nppData._nppHandle, NPPM_GETPLUGINSCONFIGDIR, 0, 0);
+    if (pathLen <= 0)
+        return {};
+
+    std::wstring dir(static_cast<size_t>(pathLen) + 1, L'\0');
+    ::SendMessageW(g_nppData._nppHandle, NPPM_GETPLUGINSCONFIGDIR, pathLen + 1, reinterpret_cast<LPARAM>(dir.data()));
+    dir.resize(static_cast<size_t>(pathLen));
     return dir;
 }
 
@@ -1922,6 +1935,17 @@ __declspec(dllexport) BOOL __cdecl isUnicode()
 __declspec(dllexport) void __cdecl setInfo(NppData nppData)
 {
     g_nppData = nppData;
+    std::wstring lexerConfigPath = GetPluginConfigDirectory();
+    if (!lexerConfigPath.empty()) {
+        lexerConfigPath.append(L"\\TreeSitterLexer.xml");
+        if (!FileExists(lexerConfigPath)) {
+            std::wstring defaultConfigPath = GetModuleDirectory();
+            if (!defaultConfigPath.empty()) {
+                defaultConfigPath.append(L"\\Config\\TreeSitterLexer.xml");
+                CopyFileIfExists(defaultConfigPath, lexerConfigPath);
+            }
+        }
+    }
 }
 
 __declspec(dllexport) const wchar_t* __cdecl getName()
