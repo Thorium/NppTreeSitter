@@ -2,6 +2,12 @@ name: CI_build
 
 on: [push, pull_request]
 
+# Needed so softprops/action-gh-release can create the release on tag builds.
+# Without this the GITHUB_TOKEN is read-only and the release step fails with
+# 403 "Resource not accessible by integration".
+permissions:
+  contents: write
+
 jobs:
   build:
 
