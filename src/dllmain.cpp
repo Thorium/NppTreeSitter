@@ -1838,11 +1838,39 @@ void goToCurrentSymbolDefinition() {
 // Dummy menu entry - N++ requires at least 1 FuncItem
 static void aboutDlg()
 {
-    ::MessageBoxW(g_nppData._nppHandle,
-        L"TreeSitterLexer - Tree-sitter syntax highlighting for Notepad++\n\n"
-        L"Provides external lexers powered by tree-sitter grammars.",
-        L"TreeSitterLexer",
-        MB_OK | MB_ICONINFORMATION);
+    // Show version (read from the embedded resource) and a clickable repo link.
+    // Uses a TaskDialog so the hyperlink works; AboutDialogCallback opens the
+    // URL via ShellExecute on TDN_HYPERLINK_CLICKED. Falls back to a plain
+    // MessageBox if the TaskDialog is unavailable.
+    const std::wstring version = GetModuleVersionString();
+    std::wstring mainInstruction = L"TreeSitterLexer";
+    if (!version.empty())
+        mainInstruction += L" " + version;
+
+    static const wchar_t* const kRepoUrl = L"https://github.com/Thorium/NppTreeSitter";
+    const std::wstring content =
+        L"Tree-sitter syntax highlighting for Notepad++.\n"
+        L"Provides external lexers powered by tree-sitter grammars.\n\n"
+        L"<a href=\"" + std::wstring(kRepoUrl) + L"\">" + kRepoUrl + L"</a>";
+
+    TASKDIALOGCONFIG config = {};
+    config.cbSize = sizeof(config);
+    config.hwndParent = g_nppData._nppHandle;
+    config.hInstance = g_hModule;
+    config.dwFlags = TDF_ENABLE_HYPERLINKS | TDF_ALLOW_DIALOG_CANCELLATION;
+    config.dwCommonButtons = TDCBF_OK_BUTTON;
+    config.pszWindowTitle = L"About TreeSitterLexer";
+    config.pszMainIcon = TD_INFORMATION_ICON;
+    config.pszMainInstruction = mainInstruction.c_str();
+    config.pszContent = content.c_str();
+    config.pfCallback = AboutDialogCallback;
+
+    if (FAILED(TaskDialogIndirect(&config, nullptr, nullptr, nullptr))) {
+        const std::wstring fallback =
+            L"Tree-sitter syntax highlighting for Notepad++\n\n" + std::wstring(kRepoUrl);
+        ::MessageBoxW(g_nppData._nppHandle, fallback.c_str(),
+            mainInstruction.c_str(), MB_OK | MB_ICONINFORMATION);
+    }
 }
 
 // Default shortcuts (users can remap them in the Shortcut Mapper)
