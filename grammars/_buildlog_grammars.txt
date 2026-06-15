@@ -1,0 +1,554 @@
+=== TreeSitterLexer Grammar Builder ===
+Platform:      x64
+Configuration: Release
+Output:        C:\git\NppTreeSitter\build\x64\Release\TreeSitterGrammars
+
+Importing MSVC environment (amd64) ...
+  cl.exe: C:\Program Files\Microsoft Visual Studio\18\Professional\VC\Tools\MSVC\14.50.35717\bin\HostX64\x64\cl.exe
+
+--- tree-sitter-python (v0.25.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-python (v0.25.0)
+  Grammar: python (path: .)
+  Wrote highlights -> python-highlights.scm
+  Wrote locals -> python-locals.scm
+  Wrote tags -> python-tags.scm
+
+--- tree-sitter-rust (v0.24.1) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-rust (v0.24.1)
+  Grammar: rust (path: .)
+  Wrote highlights -> rust-highlights.scm
+  Wrote locals -> rust-locals.scm
+  Wrote injections -> rust-injections.scm
+  Wrote tags -> rust-tags.scm
+
+--- tree-sitter-go (v0.25.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-go (v0.25.0)
+  Grammar: go (path: .)
+  Wrote highlights -> go-highlights.scm
+  Wrote locals -> go-locals.scm
+  Wrote tags -> go-tags.scm
+
+--- tree-sitter-c (v0.24.1) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-c (v0.24.1)
+  Grammar: c (path: .)
+  Wrote highlights -> c-highlights.scm
+  Wrote locals -> c-locals.scm
+  Wrote tags -> c-tags.scm
+
+--- tree-sitter-cpp (v0.23.4) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-cpp (v0.23.4)
+  Grammar: cpp (path: .)
+  Wrote highlights -> cpp-highlights.scm
+  Wrote locals -> cpp-locals.scm
+  Wrote injections -> cpp-injections.scm
+  Wrote tags -> cpp-tags.scm
+
+--- tree-sitter-c-sharp (v0.23.1) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-c-sharp (v0.23.1)
+  Grammar: c-sharp (path: .)
+  Wrote highlights -> c-sharp-highlights.scm
+  Wrote locals -> c-sharp-locals.scm
+  Wrote tags -> c-sharp-tags.scm
+
+--- tree-sitter-javascript (v0.25.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-javascript (v0.25.0)
+  Grammar: javascript (path: .)
+  Wrote highlights -> javascript-highlights.scm
+  Wrote locals -> javascript-locals.scm
+  Wrote injections -> javascript-injections.scm
+  Wrote tags -> javascript-tags.scm
+
+--- tree-sitter-typescript (v0.23.2) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-typescript (v0.23.2)
+  Grammar: typescript (path: typescript)
+  Wrote highlights -> typescript-highlights.scm
+  Wrote locals -> typescript-locals.scm
+  Wrote injections -> typescript-injections.scm
+  Wrote tags -> typescript-tags.scm
+  Grammar: tsx (path: tsx)
+  Wrote highlights -> tsx-highlights.scm
+  Wrote locals -> tsx-locals.scm
+  Wrote injections -> tsx-injections.scm
+  Wrote tags -> tsx-tags.scm
+  Grammar: flow (path: tsx)
+  Wrote highlights -> flow-highlights.scm
+  Wrote locals -> flow-locals.scm
+  Wrote injections -> flow-injections.scm
+  Wrote tags -> flow-tags.scm
+
+--- tree-sitter-java (v0.23.5) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-java (v0.23.5)
+  Grammar: java (path: .)
+  Wrote highlights -> java-highlights.scm
+  Wrote locals -> java-locals.scm
+  Wrote tags -> java-tags.scm
+
+--- tree-sitter-json (v0.24.8) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-json (v0.24.8)
+  Grammar: json (path: .)
+  Wrote highlights -> json-highlights.scm
+
+--- tree-sitter-html (v0.23.2) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-html (v0.23.2)
+  Grammar: html (path: .)
+  Wrote highlights -> html-highlights.scm
+  Wrote injections -> html-injections.scm
+
+--- tree-sitter-css (v0.25.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-css (v0.25.0)
+  Grammar: css (path: .)
+  Wrote highlights -> css-highlights.scm
+
+--- tree-sitter-bash (v0.25.1) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-bash (v0.25.1)
+  Grammar: bash (path: .)
+  Wrote highlights -> bash-highlights.scm
+  Wrote locals -> bash-locals.scm
+
+--- tree-sitter-ruby (v0.23.1) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-ruby (v0.23.1)
+  Grammar: ruby (path: .)
+  Wrote highlights -> ruby-highlights.scm
+  Wrote locals -> ruby-locals.scm
+  Wrote tags -> ruby-tags.scm
+
+--- tree-sitter-php (v0.24.2) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-php (v0.24.2)
+  Grammar: php (path: php)
+  Wrote highlights -> php-highlights.scm
+  Wrote injections -> php-injections.scm
+  Wrote tags -> php-tags.scm
+  Grammar: php_only (path: php_only)
+  Wrote highlights -> php_only-highlights.scm
+  Wrote injections -> php_only-injections.scm
+  Wrote tags -> php_only-tags.scm
+
+--- tree-sitter-xml (v0.7.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-xml (v0.7.0)
+  Grammar: xml (path: xml)
+  Wrote highlights -> xml-highlights.scm
+  Wrote locals -> xml-locals.scm
+  Grammar: dtd (path: dtd)
+  Wrote highlights -> dtd-highlights.scm
+  Wrote locals -> dtd-locals.scm
+
+--- tree-sitter-fsharp (0.3.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-fsharp (0.3.0)
+  Grammar: fsharp (path: fsharp)
+  Wrote highlights -> fsharp-highlights.scm
+  Wrote locals -> fsharp-locals.scm
+  Wrote injections -> fsharp-injections.scm
+  Wrote tags -> fsharp-tags.scm
+  Grammar: fsharp_signature (path: fsharp_signature)
+  Wrote highlights -> fsharp_signature-highlights.scm
+  Wrote locals -> fsharp_signature-locals.scm
+  Wrote injections -> fsharp_signature-injections.scm
+  Wrote tags -> fsharp_signature-tags.scm
+
+--- tree-sitter-r (v1.2.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-r (v1.2.0)
+  Grammar: r (path: .)
+  Wrote highlights -> r-highlights.scm
+  Wrote locals -> r-locals.scm
+  Wrote tags -> r-tags.scm
+
+--- tree-sitter-lua (v0.5.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-lua (v0.5.0)
+  Grammar: lua (path: .)
+  Wrote highlights -> lua-highlights.scm
+  Wrote locals -> lua-locals.scm
+  Wrote injections -> lua-injections.scm
+  Wrote tags -> lua-tags.scm
+
+--- tree-sitter-yaml (v0.7.2) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-yaml (v0.7.2)
+  Grammar: yaml (path: .)
+  Wrote highlights -> yaml-highlights.scm
+
+--- tree-sitter-toml (v0.7.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-toml (v0.7.0)
+  Grammar: toml (path: .)
+  Wrote highlights -> toml-highlights.scm
+
+--- tree-sitter-markdown (v0.5.3) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-markdown (v0.5.3)
+  Grammar: markdown (path: tree-sitter-markdown)
+  Wrote highlights -> markdown-highlights.scm
+  Wrote injections -> markdown-injections.scm
+  Grammar: markdown_inline (path: tree-sitter-markdown-inline)
+  Wrote highlights -> markdown_inline-highlights.scm
+  Wrote injections -> markdown_inline-injections.scm
+
+--- tree-sitter-cmake (v0.7.2) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-cmake (v0.7.2)
+  Grammar: cmake (path: .)
+  Wrote highlights -> cmake-highlights.scm
+  Wrote injections -> cmake-injections.scm
+
+--- tree-sitter-fortran (v0.6.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-fortran (v0.6.0)
+  Grammar: fortran (path: .)
+  Wrote highlights -> fortran-highlights.scm
+  Wrote locals -> fortran-locals.scm
+  Wrote tags -> fortran-tags.scm
+
+--- tree-sitter-pascal (v0.10.2) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-pascal (v0.10.2)
+  Grammar: pascal (path: .)
+  Wrote highlights -> pascal-highlights.scm
+  Wrote locals -> pascal-locals.scm
+
+--- tree-sitter-matlab (v1.3.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-matlab (v1.3.0)
+  Grammar: matlab (path: .)
+  Wrote highlights -> matlab-highlights.scm
+  Wrote locals -> matlab-locals.scm
+
+--- tree-sitter-swift (0.7.3-with-generated-files) ---
+  Downloading tree-sitter-swift.tar.gz ...
+  Downloading tree-sitter-swift.tar.xz ...
+  Downloading source archive for 0.7.3-with-generated-files ...
+  Extracting ...
+  Grammar: swift (path: .)
+  Wrote highlights -> swift-highlights.scm
+  Wrote locals -> swift-locals.scm
+  Wrote injections -> swift-injections.scm
+  Wrote tags -> swift-tags.scm
+
+--- tree-sitter-scala (v0.26.0) ---
+  Downloading tree-sitter-scala.tar.gz ...
+  Extracting ...
+src/grammar.json: Can't create '\\\\?\\C:\\git\\NppTreeSitter\\BuildTmp\\grammar-sources\\tree-sitter-scala\\src\\grammar.json': No such file or directory
+src/node-types.json: Can't create '\\\\?\\C:\\git\\NppTreeSitter\\BuildTmp\\grammar-sources\\tree-sitter-scala\\src\\node-types.json': No such file or directory
+src/parser.c: Can't create '\\\\?\\C:\\git\\NppTreeSitter\\BuildTmp\\grammar-sources\\tree-sitter-scala\\src\\parser.c': No such file or directory
+src/tree_sitter/alloc.h: Can't create '\\\\?\\C:\\git\\NppTreeSitter\\BuildTmp\\grammar-sources\\tree-sitter-scala\\src\\tree_sitter\\alloc.h': No such file or directory
+src/tree_sitter/array.h: Can't create '\\\\?\\C:\\git\\NppTreeSitter\\BuildTmp\\grammar-sources\\tree-sitter-scala\\src\\tree_sitter\\array.h': No such file or directory
+src/tree_sitter/parser.h: Can't create '\\\\?\\C:\\git\\NppTreeSitter\\BuildTmp\\grammar-sources\\tree-sitter-scala\\src\\tree_sitter\\parser.h': No such file or directory
+tar.exe: Error exit delayed from previous errors.
+  Downloading source archive for v0.26.0 ...
+  Extracting fallback source archive ...
+  Grammar: scala (path: .)
+  Wrote highlights -> scala-highlights.scm
+  Wrote locals -> scala-locals.scm
+  Wrote tags -> scala-tags.scm
+
+--- tree-sitter-haskell (v0.23.1) ---
+  Downloading tree-sitter-haskell.tar.gz ...
+  Downloading tree-sitter-haskell.tar.xz ...
+  Extracting ...
+WARNING:   No tree-sitter.json and no 'name' in grammars.json - skipping
+--- tree-sitter-ocaml (v0.24.0) ---
+  Downloading tree-sitter-ocaml.tar.gz ...
+  Downloading tree-sitter-ocaml.tar.xz ...
+  Extracting ...
+  Grammar: ocaml (path: grammars/ocaml)
+  Wrote highlights -> ocaml-highlights.scm
+  Wrote locals -> ocaml-locals.scm
+  Wrote tags -> ocaml-tags.scm
+  Grammar: ocaml_interface (path: grammars/interface)
+  Wrote highlights -> ocaml_interface-highlights.scm
+  Wrote locals -> ocaml_interface-locals.scm
+  Wrote tags -> ocaml_interface-tags.scm
+  Grammar: ocaml_type (path: grammars/type)
+  Wrote highlights -> ocaml_type-highlights.scm
+  Wrote locals -> ocaml_type-locals.scm
+  Wrote tags -> ocaml_type-tags.scm
+
+--- tree-sitter-julia (v0.23.1) ---
+  Downloading tree-sitter-julia.tar.gz ...
+  Downloading tree-sitter-julia.tar.xz ...
+  Extracting ...
+  Grammar: julia (path: .)
+  Wrote highlights -> julia-highlights.scm
+  Wrote locals -> julia-locals.scm
+
+--- tree-sitter-elixir (v0.3.4) ---
+  Downloading tree-sitter-elixir.tar.gz ...
+  Extracting ...
+src/grammar.json: Can't create '\\\\?\\C:\\git\\NppTreeSitter\\BuildTmp\\grammar-sources\\tree-sitter-elixir\\src\\grammar.json': No such file or directory
+src/node-types.json: Can't create '\\\\?\\C:\\git\\NppTreeSitter\\BuildTmp\\grammar-sources\\tree-sitter-elixir\\src\\node-types.json': No such file or directory
+src/parser.c: Can't create '\\\\?\\C:\\git\\NppTreeSitter\\BuildTmp\\grammar-sources\\tree-sitter-elixir\\src\\parser.c': No such file or directory
+src/tree_sitter/alloc.h: Can't create '\\\\?\\C:\\git\\NppTreeSitter\\BuildTmp\\grammar-sources\\tree-sitter-elixir\\src\\tree_sitter\\alloc.h': No such file or directory
+src/tree_sitter/array.h: Can't create '\\\\?\\C:\\git\\NppTreeSitter\\BuildTmp\\grammar-sources\\tree-sitter-elixir\\src\\tree_sitter\\array.h': No such file or directory
+src/tree_sitter/parser.h: Can't create '\\\\?\\C:\\git\\NppTreeSitter\\BuildTmp\\grammar-sources\\tree-sitter-elixir\\src\\tree_sitter\\parser.h': No such file or directory
+tar.exe: Error exit delayed from previous errors.
+  Downloading source archive for v0.3.4 ...
+  Extracting fallback source archive ...
+  Grammar: elixir (path: .)
+  Wrote highlights -> elixir-highlights.scm
+  Wrote locals -> elixir-locals.scm
+  Wrote injections -> elixir-injections.scm
+  Wrote tags -> elixir-tags.scm
+
+--- tree-sitter-zig (v1.1.2) ---
+  Downloading tree-sitter-zig.tar.gz ...
+  Downloading tree-sitter-zig.tar.xz ...
+  Extracting ...
+src/grammar.json: Can't create '\\\\?\\C:\\git\\NppTreeSitter\\BuildTmp\\grammar-sources\\tree-sitter-zig\\src\\grammar.json': No such file or directory
+src/node-types.json: Can't create '\\\\?\\C:\\git\\NppTreeSitter\\BuildTmp\\grammar-sources\\tree-sitter-zig\\src\\node-types.json': No such file or directory
+src/parser.c: Can't create '\\\\?\\C:\\git\\NppTreeSitter\\BuildTmp\\grammar-sources\\tree-sitter-zig\\src\\parser.c': No such file or directory
+src/tree_sitter/alloc.h: Can't create '\\\\?\\C:\\git\\NppTreeSitter\\BuildTmp\\grammar-sources\\tree-sitter-zig\\src\\tree_sitter\\alloc.h': No such file or directory
+src/tree_sitter/array.h: Can't create '\\\\?\\C:\\git\\NppTreeSitter\\BuildTmp\\grammar-sources\\tree-sitter-zig\\src\\tree_sitter\\array.h': No such file or directory
+src/tree_sitter/parser.h: Can't create '\\\\?\\C:\\git\\NppTreeSitter\\BuildTmp\\grammar-sources\\tree-sitter-zig\\src\\tree_sitter\\parser.h': No such file or directory
+tar.exe: Error exit delayed from previous errors.
+  Downloading source archive for v1.1.2 ...
+  Extracting fallback source archive ...
+  Grammar: zig (path: .)
+  Wrote highlights -> zig-highlights.scm
+  Wrote locals -> zig-locals.scm
+  Wrote injections -> zig-injections.scm
+
+--- tree-sitter-elm (v5.8.0) ---
+  Downloading tree-sitter-elm.tar.gz ...
+  Downloading tree-sitter-elm.tar.xz ...
+  Downloading source archive for v5.8.0 ...
+  Extracting ...
+  Grammar: elm (path: .)
+  Wrote highlights -> elm-highlights.scm
+  Wrote locals -> elm-locals.scm
+  Wrote injections -> elm-injections.scm
+  Wrote tags -> elm-tags.scm
+
+--- tree-sitter-nix (v0.3.0) ---
+  Downloading tree-sitter-nix.tar.gz ...
+  Downloading tree-sitter-nix.tar.xz ...
+  Downloading source archive for v0.3.0 ...
+  Extracting ...
+  Grammar: nix (path: .)
+  Wrote highlights -> nix-highlights.scm
+  Wrote locals -> nix-locals.scm
+  Wrote injections -> nix-injections.scm
+  Wrote tags -> nix-tags.scm
+
+--- tree-sitter-kotlin (0.3.8) ---
+  Downloading tree-sitter-kotlin.tar.gz ...
+  Downloading tree-sitter-kotlin.tar.xz ...
+  Downloading source archive for 0.3.8 ...
+  Extracting ...
+  No tree-sitter.json; using name 'kotlin' from grammars.json
+  Grammar: kotlin (path: .)
+  Wrote highlights -> kotlin-highlights.scm
+  Wrote locals -> kotlin-locals.scm
+
+--- tree-sitter-erlang (0.16) ---
+  Downloading tree-sitter-erlang.tar.gz ...
+  Downloading tree-sitter-erlang.tar.xz ...
+  Downloading source archive for 0.16 ...
+  Extracting ...
+  No tree-sitter.json; using name 'erlang' from grammars.json
+  Grammar: erlang (path: .)
+  Wrote highlights -> erlang-highlights.scm
+
+--- tree-sitter-solidity (v1.2.13) ---
+  Downloading tree-sitter-solidity.tar.gz ...
+  Downloading tree-sitter-solidity.tar.xz ...
+  Downloading source archive for v1.2.13 ...
+  Extracting ...
+  Grammar: solidity (path: .)
+  Wrote highlights -> solidity-highlights.scm
+  Wrote locals -> solidity-locals.scm
+  Wrote tags -> solidity-tags.scm
+
+--- tree-sitter-sql (v0.3.8) ---
+  Refreshing cache: v0.3.11 -> v0.3.8
+  Downloading tree-sitter-sql.tar.gz ...
+  Downloading tree-sitter-sql.tar.xz ...
+  Downloading source archive for v0.3.8 ...
+  Extracting ...
+  Grammar: sql (path: .)
+  Generating parser sources for sql ...
+Start-Process : This command cannot be run due to the error: %1 is not a valid Win32 application.
+At C:\git\NppTreeSitter\grammars\build-grammars.ps1:316 char:16
++ ...  $process = Start-Process npm -ArgumentList $generateArgs -WorkingDir ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [Start-Process], InvalidOperationException
+    + FullyQualifiedErrorId : InvalidOperationException,Microsoft.PowerShell.Commands.StartProcessCommand
+ 
+Ensure-GeneratedParser :   tree-sitter generate failed for sql (exit )
+At C:\git\NppTreeSitter\grammars\build-grammars.ps1:564 char:19
++ ...   if (-not (Ensure-GeneratedParser -GrammarName $gName -GrammarSource ...
+WARNING:   parser.c is unavailable and could not be generated for sql+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    + CategoryInfo          : NotSpecified: (:) [Write-Error], WriteErrorException
+    + FullyQualifiedErrorId : Microsoft.PowerShell.Commands.WriteErrorException,Ensure-GeneratedParser
+ 
+
+--- tree-sitter-scheme (v0.24.7) ---
+  Downloading tree-sitter-scheme.tar.gz ...
+  Downloading tree-sitter-scheme.tar.xz ...
+  Downloading source archive for v0.24.7 ...
+  Extracting ...
+  Grammar: scheme (path: .)
+  Wrote highlights -> scheme-highlights.scm
+
+--- tree-sitter-racket (v0.24.7) ---
+  Downloading tree-sitter-racket.tar.gz ...
+  Downloading tree-sitter-racket.tar.xz ...
+  Downloading source archive for v0.24.7 ...
+  Extracting ...
+  Grammar: racket (path: .)
+  Wrote highlights -> racket-highlights.scm
+  Wrote locals -> racket-locals.scm
+  Wrote tags -> racket-tags.scm
+
+--- tree-sitter-elisp (1.6.1) ---
+  Downloading tree-sitter-elisp.tar.gz ...
+  Downloading tree-sitter-elisp.tar.xz ...
+  Downloading source archive for 1.6.1 ...
+  Extracting ...
+  Grammar: elisp (path: .)
+  Wrote highlights -> elisp-highlights.scm
+  Wrote tags -> elisp-tags.scm
+
+--- tree-sitter-clojure (v0.0.13) ---
+  Downloading tree-sitter-clojure.tar.gz ...
+  Downloading tree-sitter-clojure.tar.xz ...
+  Downloading source archive for v0.0.13 ...
+  Extracting ...
+  No tree-sitter.json; using name 'clojure' from grammars.json
+  Grammar: clojure (path: .)
+  Wrote highlights -> clojure-highlights.scm
+
+--- tree-sitter-commonlisp (v0.4.1) ---
+  Downloading tree-sitter-commonlisp.tar.gz ...
+  Downloading tree-sitter-commonlisp.tar.xz ...
+  Downloading source archive for v0.4.1 ...
+  Extracting ...
+  Grammar: commonlisp (path: .)
+  Wrote highlights -> commonlisp-highlights.scm
+  Wrote locals -> commonlisp-locals.scm
+  Wrote tags -> commonlisp-tags.scm
+
+--- tree-sitter-perl (v1.1.2) ---
+  Refreshing cache: v1.1.1 -> v1.1.2
+  Downloading tree-sitter-perl.tar.gz ...
+  Extracting ...
+  Grammar: perl (path: .)
+  Wrote highlights -> perl-highlights.scm
+  Wrote injections -> perl-injections.scm
+
+--- tree-sitter-verilog (v1.0.3) ---
+  Downloading tree-sitter-verilog.tar.gz ...
+  Downloading tree-sitter-verilog.tar.xz ...
+  Extracting ...
+WARNING:   No tree-sitter.json and no 'name' in grammars.json - skipping
+--- tree-sitter-vhdl (v1.4.0) ---
+  Downloading tree-sitter-vhdl.tar.gz ...
+  Extracting ...
+  Grammar: vhdl (path: .)
+  Wrote highlights -> vhdl-highlights.scm
+
+--- tree-sitter-latex (v0.6.0) ---
+  Downloading tree-sitter-latex.tar.gz ...
+  Downloading tree-sitter-latex.tar.xz ...
+  Downloading source archive for v0.6.0 ...
+  Extracting ...
+  Grammar: latex (path: .)
+  Generating parser sources for latex ...
+Start-Process : This command cannot be run due to the error: %1 is not a valid Win32 application.
+At C:\git\NppTreeSitter\grammars\build-grammars.ps1:316 char:16
++ ...  $process = Start-Process npm -ArgumentList $generateArgs -WorkingDir ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [Start-Process], InvalidOperationException
+    + FullyQualifiedErrorId : InvalidOperationException,Microsoft.PowerShell.Commands.StartProcessCommand
+WARNING:   parser.c is unavailable and could not be generated for latex 
+
+Ensure-GeneratedParser :   tree-sitter generate failed for latex (exit )
+
+At C:\git\NppTreeSitter\grammars\build-grammars.ps1:564 char:19
+--- tree-sitter-asm (v0.24.0) ---+ ...   if (-not (Ensure-GeneratedParser -GrammarName $gName -GrammarSource ...
+
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  Downloading tree-sitter-asm.tar.gz ...    + CategoryInfo          : NotSpecified: (:) [Write-Error], WriteErrorException
+
+    + FullyQualifiedErrorId : Microsoft.PowerShell.Commands.WriteErrorException,Ensure-GeneratedParser
+ 
+  Downloading tree-sitter-asm.tar.xz ...
+  Downloading source archive for v0.24.0 ...
+  Extracting ...
+  Grammar: asm (path: .)
+  Wrote highlights -> asm-highlights.scm
+  Wrote injections -> asm-injections.scm
+
+--- tree-sitter-hcl (v1.1.0) ---
+  Downloading tree-sitter-hcl.tar.gz ...
+  Downloading tree-sitter-hcl.tar.xz ...
+  Downloading source archive for v1.1.0 ...
+  Extracting ...
+  No tree-sitter.json; using name 'hcl' from grammars.json
+  Grammar: hcl (path: .)
+  Wrote highlights -> hcl-highlights.scm
+
+--- tree-sitter-proto (0.4.0) ---
+  Downloading tree-sitter-proto.tar.gz ...
+  Downloading tree-sitter-proto.tar.xz ...
+  Downloading source archive for 0.4.0 ...
+  Extracting ...
+  Grammar: proto (path: .)
+  Wrote highlights -> proto-highlights.scm
+
+Building 55 grammar(s) with up to 20 parallel job(s) ...
+  OK: tree-sitter-python.dll
+  OK: tree-sitter-go.dll
+  OK: tree-sitter-c.dll
+  OK: tree-sitter-java.dll
+  OK: tree-sitter-rust.dll
+  OK: tree-sitter-cpp.dll
+  OK: tree-sitter-javascript.dll
+  OK: tree-sitter-c-sharp.dll
+  OK: tree-sitter-typescript.dll
+  OK: tree-sitter-tsx.dll
+  OK: tree-sitter-flow.dll
+  OK: tree-sitter-json.dll
+  OK: tree-sitter-html.dll
+  OK: tree-sitter-css.dll
+  OK: tree-sitter-bash.dll
+  OK: tree-sitter-ruby.dll
+  OK: tree-sitter-php.dll
+  OK: tree-sitter-php_only.dll
+  OK: tree-sitter-xml.dll
+  OK: tree-sitter-dtd.dll
+  OK: tree-sitter-fsharp.dll
+  OK: tree-sitter-fsharp_signature.dll
+  OK: tree-sitter-r.dll
+  OK: tree-sitter-lua.dll
+  OK: tree-sitter-yaml.dll
+  OK: tree-sitter-toml.dll
+  OK: tree-sitter-markdown.dll
+  OK: tree-sitter-markdown_inline.dll
+  OK: tree-sitter-cmake.dll
+  OK: tree-sitter-matlab.dll
+  OK: tree-sitter-zig.dll
+  OK: tree-sitter-pascal.dll
+  OK: tree-sitter-elixir.dll
+  OK: tree-sitter-elm.dll
+  OK: tree-sitter-nix.dll
+  OK: tree-sitter-erlang.dll
+  OK: tree-sitter-scheme.dll
+  OK: tree-sitter-racket.dll
+WARNING:   FAILED (link): tree-sitter-hcl
+   Creating library C:\git\NppTreeSitter\build\x64\Release\TreeSitterGrammars\tree-sitter-hcl.lib and object C:\git\NppTreeSitter\build\x64\Release\TreeSitterGrammars\tree-sitter-hcl.exp
+parser.obj : error LNK2001: unresolved external symbol tree_sitter_hcl_external_scanner_deserialize
+parser.obj : error LNK2001: unresolved external symbol tree_sitter_hcl_external_scanner_destroy
+parser.obj : error LNK2001: unresolved external symbol tree_sitter_hcl_external_scanner_scan
+parser.obj : error LNK2001: unresolved external symbol tree_sitter_hcl_external_scanner_create
+parser.obj : error LNK2001: unresolved external symbol tree_sitter_hcl_external_scanner_serialize
+C:\git\NppTreeSitter\build\x64\Release\TreeSitterGrammars\tree-sitter-hcl.dll : fatal error LNK1120: 5 unresolved externals
+  OK: tree-sitter-commonlisp.dll
+  OK: tree-sitter-proto.dll
+  OK: tree-sitter-clojure.dll
+  OK: tree-sitter-asm.dll
+  OK: tree-sitter-ocaml_interface.dll
+  OK: tree-sitter-solidity.dll
+  OK: tree-sitter-ocaml_type.dll
+  OK: tree-sitter-kotlin.dll
+  OK: tree-sitter-ocaml.dll
+  OK: tree-sitter-swift.dll
+  OK: tree-sitter-perl.dll
+  OK: tree-sitter-fortran.dll
+  OK: tree-sitter-julia.dll
+  OK: tree-sitter-elisp.dll
+  OK: tree-sitter-scala.dll
+  OK: tree-sitter-vhdl.dll
+
+=== Done: 54 built, 0 up-to-date, 3 failed, 2 skipped ===

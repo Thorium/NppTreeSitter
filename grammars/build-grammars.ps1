@@ -2,8 +2,15 @@
 .SYNOPSIS
     Downloads and compiles tree-sitter grammar DLLs for the TreeSitterLexer plugin.
 .DESCRIPTION
-    Reads grammars.json, downloads release tarballs from GitHub, reads each
-    repo's tree-sitter.json for source layout, compiles to DLL via MSVC cl.exe.
+    Reads grammars.json, downloads release tarballs (or GitHub source archives)
+    from GitHub, reads each repo's tree-sitter.json for source layout, and
+    compiles to DLL via MSVC cl.exe.
+
+    Source downloads are cached (tag-aware). Compilation is incremental (a DLL is
+    rebuilt only when its sources or this script are newer) and runs in parallel
+    across grammars (bounded by the CPU count). Repos that ship no
+    tree-sitter.json can declare a grammar "name" directly in grammars.json.
+
     Adapted from the WinMerge build-grammars.ps1 script.
 .PARAMETER OutDir
     Output directory for DLLs and .scm files.
@@ -150,7 +157,11 @@ function Get-GrammarSource {
 
         $tsJsonPath = Join-Path $ExtractDir "tree-sitter.json"
         if (-not (Test-Path $tsJsonPath)) {
-            return $false
+            # No tree-sitter.json: accept the cache if a conventional parser source
+            # (or a grammar.js we can generate from) exists at the repo root.
+            $parserPath = Join-Path $ExtractDir "src\parser.c"
+            $grammarJsPath = Join-Path $ExtractDir "grammar.js"
+            return ((Test-Path $parserPath) -or (Test-Path $grammarJsPath))
         }
 
         try {
@@ -285,148 +296,41 @@ function Get-GrammarSource {
     return $extractDir
 }
 
-# ---- Compile a grammar to DLL ----
+# Generate src/parser.c from grammar.js (via tree-sitter-cli) when a repo ships
+# no committed parser sources. Returns $true if parser.c is present afterwards.
+function Ensure-GeneratedParser {
+    param([string]$GrammarName, [string]$GrammarSourceDir)
 
-function Build-GrammarDll {
-    param(
-        [string]$GrammarName,
-        [string]$SourceDir,
-        [string]$RepoDir,
-        [string[]]$HighlightsScm,
-        [string[]]$LocalsScm,
-        [string[]]$InjectionsScm,
-        [string[]]$TagsScm,
-        [string]$DllName
-    )
-
-    function Ensure-GeneratedParser {
-        param([string]$GrammarSourceDir)
-
-        $parserPath = Join-Path $GrammarSourceDir "src\parser.c"
-        if (Test-Path $parserPath) {
-            return $true
-        }
-
-        $grammarJsPath = Join-Path $GrammarSourceDir "grammar.js"
-        if (-not (Test-Path $grammarJsPath)) {
-            return $false
-        }
-
-        Write-Host "  Generating parser sources ..."
-        $generateArgs = @("exec", "--yes", "tree-sitter-cli", "--", "generate")
-        $process = Start-Process npm -ArgumentList $generateArgs -WorkingDirectory $GrammarSourceDir -NoNewWindow -Wait -PassThru
-        if ($process.ExitCode -ne 0) {
-            Write-Error "  tree-sitter generate failed for $GrammarName (exit $($process.ExitCode))"
-            return $false
-        }
-
-        return (Test-Path $parserPath)
+    $parserPath = Join-Path $GrammarSourceDir "src\parser.c"
+    if (Test-Path $parserPath) {
+        return $true
     }
 
-    if (-not (Ensure-GeneratedParser -GrammarSourceDir $SourceDir)) {
-        Write-Warning "  parser.c is unavailable and could not be generated for $GrammarName"
+    $grammarJsPath = Join-Path $GrammarSourceDir "grammar.js"
+    if (-not (Test-Path $grammarJsPath)) {
         return $false
     }
 
-    $srcDir   = Join-Path $SourceDir "src"
-    $parserC  = Join-Path $srcDir "parser.c"
-    $scannerC = Join-Path $srcDir "scanner.c"
-    if (-not (Test-Path $parserC)) {
-        Write-Warning "  parser.c not found at $parserC - skipping $GrammarName"
-        return $false
+    Write-Host "  Generating parser sources for $GrammarName ..."
+    # Invoke through cmd.exe so PATHEXT resolves npm -> npm.cmd. A bare "npm" via
+    # Start-Process can hit the extensionless Unix shell script shipped alongside
+    # node ("%1 is not a valid Win32 application").
+    Push-Location $GrammarSourceDir
+    try {
+        & cmd.exe /c npm exec --yes tree-sitter-cli -- generate 2>&1 | Write-Host
+        $exit = $LASTEXITCODE
+    } finally {
+        Pop-Location
     }
-    $sources = @($parserC)
-    if (Test-Path $scannerC) { $sources += $scannerC }
-
-    $buildDir = Join-Path $RepoRoot "BuildTmp\grammar-build\$DllName\$Platform\$Configuration"
-    New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
-    New-Item -ItemType Directory -Path $OutDir   -Force | Out-Null
-    $dllPath = Join-Path $OutDir "$DllName.dll"
-
-    $cflags = @("/nologo","/c","/TC","/W3","/D_USRDLL","/D_WINDOWS","/wd4996","/wd4267","/wd4244","/wd4101")
-    if ($Configuration -eq "Release") {
-        $cflags += @("/O2","/MD","/DNDEBUG","/GL")
-    } else {
-        $cflags += @("/Od","/MDd","/D_DEBUG","/Zi")
-    }
-
-    $objFiles = @()
-    foreach ($src in $sources) {
-        $objName = [IO.Path]::GetFileNameWithoutExtension($src) + ".obj"
-        $objPath = Join-Path $buildDir $objName
-        $objFiles += $objPath
-        $fileName = [IO.Path]::GetFileName($src)
-        Write-Host "  Compiling $fileName ..."
-        $allArgs = $cflags + @("/I`"$srcDir`"", "/Fo`"$objPath`"", "`"$src`"")
-        $p = Start-Process cl.exe -ArgumentList $allArgs -NoNewWindow -Wait -PassThru
-        if ($p.ExitCode -ne 0) {
-            Write-Error "  cl.exe failed for $fileName (exit $($p.ExitCode))"
-            return $false
-        }
-    }
-
-    Write-Host "  Linking $DllName.dll ..."
-    $linkArgs = @("/nologo","/DLL","/OUT:`"$dllPath`"")
-    if ($Configuration -eq "Release") {
-        $linkArgs += @("/LTCG","/OPT:REF","/OPT:ICF")
-    } else {
-        $linkArgs += @("/DEBUG")
-    }
-    $linkArgs += $objFiles
-    $p = Start-Process link.exe -ArgumentList $linkArgs -NoNewWindow -Wait -PassThru
-    if ($p.ExitCode -ne 0) {
-        Write-Error "  link.exe failed for $DllName (exit $($p.ExitCode))"
+    if ($exit -ne 0) {
+        Write-Error "  tree-sitter generate failed for $GrammarName (exit $exit)"
         return $false
     }
 
-    function Write-QueryFile {
-        param(
-            [string]$QueryName,
-            [string[]]$QueryPaths
-        )
-
-        if (-not $QueryPaths -or $QueryPaths.Count -eq 0) {
-            if ($QueryName -eq "highlights") {
-                Write-Warning "  No highlights.scm for $GrammarName"
-            }
-            return
-        }
-
-        $dest = Join-Path $OutDir "$GrammarName-$QueryName.scm"
-        $builder = New-Object System.Text.StringBuilder
-        $first = $true
-        foreach ($queryPath in $QueryPaths) {
-            if (-not (Test-Path $queryPath)) {
-                continue
-            }
-
-            if (-not $first) {
-                [void]$builder.AppendLine()
-            }
-            [void]$builder.AppendLine("; Source: $([IO.Path]::GetFileName($queryPath))")
-            [void]$builder.Append((Get-Content $queryPath -Raw))
-            $first = $false
-        }
-
-        if ($first) {
-            if ($QueryName -eq "highlights") {
-                Write-Warning "  No highlights.scm for $GrammarName"
-            }
-            return
-        }
-
-        [System.IO.File]::WriteAllText($dest, $builder.ToString())
-        Write-Host "  Wrote $QueryName -> $GrammarName-$QueryName.scm"
-    }
-
-    Write-QueryFile -QueryName "highlights" -QueryPaths $HighlightsScm
-    Write-QueryFile -QueryName "locals" -QueryPaths $LocalsScm
-    Write-QueryFile -QueryName "injections" -QueryPaths $InjectionsScm
-    Write-QueryFile -QueryName "tags" -QueryPaths $TagsScm
-
-    Write-Host "  OK: $dllPath"
-    return $true
+    return (Test-Path $parserPath)
 }
+
+# ---- Query (.scm) bundling ----
 
 function Resolve-QueryPaths {
     param(
@@ -459,7 +363,8 @@ function Resolve-QueryPaths {
 
         $tryPaths = @(
             (Join-Path $repoDir $candidate),
-            (Join-Path $SourceDir $candidate)
+            (Join-Path $SourceDir $candidate),
+            (Join-Path $ScriptDir $candidate)
         ) + $tryPaths
 
         foreach ($tryPath in $tryPaths) {
@@ -473,11 +378,118 @@ function Resolve-QueryPaths {
     return $resolved.ToArray()
 }
 
+function Write-QueryFile {
+    param(
+        [string]$GrammarName,
+        [string]$QueryName,
+        [string[]]$QueryPaths
+    )
+
+    if (-not $QueryPaths -or $QueryPaths.Count -eq 0) {
+        if ($QueryName -eq "highlights") {
+            Write-Warning "  No highlights.scm for $GrammarName"
+        }
+        return
+    }
+
+    $dest = Join-Path $OutDir "$GrammarName-$QueryName.scm"
+    $builder = New-Object System.Text.StringBuilder
+    $first = $true
+    foreach ($queryPath in $QueryPaths) {
+        if (-not (Test-Path $queryPath)) {
+            continue
+        }
+
+        if (-not $first) {
+            [void]$builder.AppendLine()
+        }
+        [void]$builder.AppendLine("; Source: $([IO.Path]::GetFileName($queryPath))")
+        [void]$builder.Append((Get-Content $queryPath -Raw))
+        $first = $false
+    }
+
+    if ($first) {
+        if ($QueryName -eq "highlights") {
+            Write-Warning "  No highlights.scm for $GrammarName"
+        }
+        return
+    }
+
+    [System.IO.File]::WriteAllText($dest, $builder.ToString())
+    Write-Host "  Wrote $QueryName -> $GrammarName-$QueryName.scm"
+}
+
+# ---- Up-to-date check ----
+
+# A grammar needs (re)building when its DLL is missing or older than any input
+# (the parser/scanner sources or this script). Query .scm files are bundled
+# separately and aren't compiled into the DLL, so they're not inputs here.
+function Test-NeedsBuild {
+    param([string]$DllPath, [string[]]$Inputs)
+    if (-not (Test-Path $DllPath)) { return $true }
+    $dllTime = (Get-Item $DllPath).LastWriteTimeUtc
+    foreach ($in in $Inputs) {
+        if ($in -and (Test-Path $in)) {
+            if ((Get-Item $in).LastWriteTimeUtc -gt $dllTime) { return $true }
+        }
+    }
+    return $false
+}
+
+# ---- Parallel compilation ----
+
+# Self-contained compile+link for one grammar. Runs inside a background job, so
+# it may use only its $Plan argument, the inherited MSVC environment, and
+# built-in cmdlets (no script-level functions/variables).
+$BuildGrammarScript = {
+    param($Plan)
+    New-Item -ItemType Directory -Path $Plan.BuildDir -Force | Out-Null
+    $objs = @()
+    foreach ($src in $Plan.Sources) {
+        $obj = Join-Path $Plan.BuildDir ([IO.Path]::GetFileNameWithoutExtension($src) + ".obj")
+        $objs += $obj
+        # CFlags forces C with /TC; C++ scanners (.cc/.cpp/.cxx) need /TP instead.
+        # cl applies the last /T* flag, so appending /TP overrides /TC for those files.
+        $langFlag = @()
+        if ($src -match '\.(cc|cpp|cxx)$') { $langFlag = @("/TP") }
+        $clArgs = @($Plan.CFlags) + $langFlag + @("/I$($Plan.SrcDir)", "/Fo$obj", "$src")
+        $out = & cl.exe @clArgs 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            return [pscustomobject]@{ Name = $Plan.Name; Ok = $false; Stage = "compile $([IO.Path]::GetFileName($src))"; Output = ($out -join [Environment]::NewLine) }
+        }
+    }
+    $linkArgs = @($Plan.LinkFlags) + @("/OUT:$($Plan.DllPath)") + $objs
+    $out = & link.exe @linkArgs 2>&1
+    return [pscustomobject]@{ Name = $Plan.Name; Ok = ($LASTEXITCODE -eq 0); Stage = "link"; Output = ($out -join [Environment]::NewLine) }
+}
+
+# Run build plans with bounded parallelism using background jobs (PowerShell 5.1
+# compatible; ForEach-Object -Parallel needs pwsh 7, which the build doesn't use).
+function Invoke-GrammarBuilds {
+    param([scriptblock]$Action, [object[]]$Plans, [int]$Throttle)
+    $results = @()
+    if (-not $Plans -or $Plans.Count -eq 0) { return $results }
+    if ($Throttle -lt 1) { $Throttle = 1 }
+    $queue = New-Object System.Collections.Queue
+    foreach ($pl in $Plans) { [void]$queue.Enqueue($pl) }
+    $jobs = New-Object System.Collections.ArrayList
+    while ($queue.Count -gt 0 -or $jobs.Count -gt 0) {
+        while ($jobs.Count -lt $Throttle -and $queue.Count -gt 0) {
+            [void]$jobs.Add((Start-Job -ScriptBlock $Action -ArgumentList $queue.Dequeue()))
+        }
+        $finished = Wait-Job -Job ($jobs.ToArray()) -Any
+        foreach ($j in @($finished)) {
+            $results += Receive-Job -Job $j
+            Remove-Job -Job $j
+            $jobs.Remove($j)
+        }
+    }
+    return $results
+}
+
 # ---- Main ----
 
-$succeeded = [int]0
-$failed    = [int]0
-$skipped   = [int]0
+$succeeded = 0; $failed = 0; $skipped = 0; $cached = 0
 
 Write-Host "=== TreeSitterLexer Grammar Builder ==="
 Write-Host "Platform:      $Platform"
@@ -492,8 +504,23 @@ if (-not (Test-Path (Join-Path $crtLibDir "msvcrt.lib"))) {
 }
 Write-Host ""
 
-$config = Get-Content $ConfigFile -Raw | ConvertFrom-Json
+# Shared compiler/linker flags.
+$cflags    = @("/nologo","/c","/TC","/W3","/D_USRDLL","/D_WINDOWS","/wd4996","/wd4267","/wd4244","/wd4101")
+$linkFlags = @("/nologo","/DLL")
+if ($Configuration -eq "Release") {
+    $cflags    += @("/O2","/MD","/DNDEBUG","/GL")
+    $linkFlags += @("/LTCG","/OPT:REF","/OPT:ICF")
+} else {
+    $cflags    += @("/Od","/MDd","/D_DEBUG","/Zi")
+    $linkFlags += @("/DEBUG")
+}
 
+$config = Get-Content $ConfigFile -Raw | ConvertFrom-Json
+New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
+
+# Phase 1 (sequential, fast): download sources, generate parsers when needed,
+# bundle query files, and decide which grammars actually need recompiling.
+$plans = @()
 foreach ($entry in $config.grammars) {
     $repo     = $entry.repo
     $tag      = $entry.tag
@@ -508,15 +535,24 @@ foreach ($entry in $config.grammars) {
         continue
     }
 
+    # Most grammars ship a tree-sitter.json describing their grammar name(s) and
+    # source layout. Some older/popular ones (e.g. kotlin, erlang) don't; for
+    # those, grammars.json may supply an explicit "name" and we assume the
+    # conventional single-grammar layout (sources in ./src, queries in ./queries).
     $tsJsonPath = Join-Path $repoDir "tree-sitter.json"
-    if (-not (Test-Path $tsJsonPath)) {
-        Write-Warning "  No tree-sitter.json - skipping"
+    if (Test-Path $tsJsonPath) {
+        $tsJson = Get-Content $tsJsonPath -Raw | ConvertFrom-Json
+        $grammarList = $tsJson.grammars
+    } elseif ($entry.name) {
+        Write-Host "  No tree-sitter.json; using name '$($entry.name)' from grammars.json"
+        $grammarList = @([pscustomobject]@{ name = $entry.name; path = "."; highlights = $null; locals = $null; tags = $null; injections = $null })
+    } else {
+        Write-Warning "  No tree-sitter.json and no 'name' in grammars.json - skipping"
         $skipped++
         continue
     }
-    $tsJson = Get-Content $tsJsonPath -Raw | ConvertFrom-Json
 
-    foreach ($g in $tsJson.grammars) {
+    foreach ($g in $grammarList) {
         $gName = $g.name
         $gPath = $g.path
         if (-not $gPath) { $gPath = "." }
@@ -535,18 +571,90 @@ foreach ($entry in $config.grammars) {
 
         $sourceDir = if ($gPath -eq ".") { $repoDir } else { Join-Path $repoDir $gPath }
         $dllName   = "tree-sitter-$gName"
-
-        $hlScm = Resolve-QueryPaths -QuerySpec $g.highlights -SourceDir $sourceDir -RepoDir $repoDir -DefaultRelativePath "queries\highlights.scm"
-        $localsScm = Resolve-QueryPaths -QuerySpec $g.locals -SourceDir $sourceDir -RepoDir $repoDir -DefaultRelativePath "queries\locals.scm"
-        $injectionsScm = Resolve-QueryPaths -QuerySpec $g.injections -SourceDir $sourceDir -RepoDir $repoDir -DefaultRelativePath $null
-        $tagsScm = Resolve-QueryPaths -QuerySpec $g.tags -SourceDir $sourceDir -RepoDir $repoDir -DefaultRelativePath $null
-
         Write-Host "  Grammar: $gName (path: $gPath)"
-        $ok = Build-GrammarDll -GrammarName $gName -SourceDir $sourceDir -RepoDir $repoDir -HighlightsScm $hlScm -LocalsScm $localsScm -InjectionsScm $injectionsScm -TagsScm $tagsScm -DllName $dllName
-        if ($ok) { $succeeded++ } else { $failed++ }
+
+        if (-not (Ensure-GeneratedParser -GrammarName $gName -GrammarSourceDir $sourceDir)) {
+            Write-Warning "  parser.c is unavailable and could not be generated for $gName"
+            $failed++
+            continue
+        }
+
+        $srcDir   = Join-Path $sourceDir "src"
+        $parserC  = Join-Path $srcDir "parser.c"
+        if (-not (Test-Path $parserC)) {
+            Write-Warning "  parser.c not found at $parserC - skipping $gName"
+            $failed++
+            continue
+        }
+        $sources = @($parserC)
+        # External scanners ship as scanner.c (C) or scanner.cc/.cpp (C++, e.g. hcl).
+        # Compiling the wrong/no extension leaves tree_sitter_<lang>_external_scanner_*
+        # unresolved at link time, so pick up whichever variant exists.
+        foreach ($scannerName in @("scanner.c", "scanner.cc", "scanner.cpp")) {
+            $scannerPath = Join-Path $srcDir $scannerName
+            if (Test-Path $scannerPath) { $sources += $scannerPath; break }
+        }
+
+        # Resolve & bundle .scm query files (cheap; always refreshed).
+        # grammars.json may override query locations per entry - needed for grammars
+        # whose upstream repo lacks a usable queries/highlights.scm (we then point at a
+        # vendored-queries/*.scm checked into this repo) or keeps queries off the
+        # conventional path (e.g. queries/Neovim/highlights.scm). These overrides win
+        # over the grammar's own tree-sitter.json paths and also apply to name-fallback
+        # grammars (which have no tree-sitter.json at all).
+        $hlSpec  = if ($entry.highlights)  { $entry.highlights }  else { $g.highlights }
+        $locSpec = if ($entry.locals)      { $entry.locals }      else { $g.locals }
+        $injSpec = if ($entry.injections)  { $entry.injections }  else { $g.injections }
+        $tagSpec = if ($entry.tags)        { $entry.tags }        else { $g.tags }
+
+        $hlScm = Resolve-QueryPaths -QuerySpec $hlSpec -SourceDir $sourceDir -RepoDir $repoDir -DefaultRelativePath "queries\highlights.scm"
+        $localsScm = Resolve-QueryPaths -QuerySpec $locSpec -SourceDir $sourceDir -RepoDir $repoDir -DefaultRelativePath "queries\locals.scm"
+        $injectionsScm = Resolve-QueryPaths -QuerySpec $injSpec -SourceDir $sourceDir -RepoDir $repoDir -DefaultRelativePath "queries\injections.scm"
+        $tagsScm = Resolve-QueryPaths -QuerySpec $tagSpec -SourceDir $sourceDir -RepoDir $repoDir -DefaultRelativePath "queries\tags.scm"
+
+        Write-QueryFile -GrammarName $gName -QueryName "highlights" -QueryPaths $hlScm
+        Write-QueryFile -GrammarName $gName -QueryName "locals" -QueryPaths $localsScm
+        Write-QueryFile -GrammarName $gName -QueryName "injections" -QueryPaths $injectionsScm
+        Write-QueryFile -GrammarName $gName -QueryName "tags" -QueryPaths $tagsScm
+
+        $dllPath  = Join-Path $OutDir "$dllName.dll"
+        $buildDir = Join-Path $RepoRoot "BuildTmp\grammar-build\$dllName\$Platform\$Configuration"
+        if (-not (Test-NeedsBuild -DllPath $dllPath -Inputs (@($sources) + @($PSCommandPath)))) {
+            Write-Host "  Up to date: $dllName.dll"
+            $cached++
+            continue
+        }
+
+        $plans += @{
+            Name      = $dllName
+            Sources   = $sources
+            SrcDir    = $srcDir
+            BuildDir  = $buildDir
+            DllPath   = $dllPath
+            CFlags    = $cflags
+            LinkFlags = $linkFlags
+        }
     }
     Write-Host ""
 }
 
-Write-Host "=== Done: $succeeded succeeded, $failed failed, $skipped skipped ==="
+# Phase 2 (parallel): compile + link the grammars that need it.
+if ($plans.Count -gt 0) {
+    $throttle = [Environment]::ProcessorCount
+    if ($throttle -lt 1) { $throttle = 1 }
+    Write-Host "Building $($plans.Count) grammar(s) with up to $throttle parallel job(s) ..."
+    foreach ($r in (Invoke-GrammarBuilds -Action $BuildGrammarScript -Plans $plans -Throttle $throttle)) {
+        if ($r.Ok) {
+            Write-Host "  OK: $($r.Name).dll"
+            $succeeded++
+        } else {
+            Write-Warning "  FAILED ($($r.Stage)): $($r.Name)"
+            if ($r.Output) { Write-Host $r.Output }
+            $failed++
+        }
+    }
+}
+
+Write-Host ""
+Write-Host "=== Done: $succeeded built, $cached up-to-date, $failed failed, $skipped skipped ==="
 if ($failed -gt 0) { exit 1 }

@@ -91,6 +91,7 @@ constexpr int SC_MOD_DELETETEXT = 0x2;
 constexpr int STATUSBAR_CUR_POS = 2;
 
 constexpr UINT SCI_GETLENGTH = 2006;
+constexpr UINT SCI_GETENDSTYLED = 2028;
 constexpr UINT SCI_GETCURRENTPOS = 2008;
 constexpr UINT SCI_GOTOPOS = 2025;
 constexpr UINT SCI_LINEFROMPOSITION = 2166;
@@ -104,6 +105,9 @@ constexpr UINT SCI_GRABFOCUS = 2400;
 constexpr UINT SCI_GETTEXTRANGEFULL = 2039;
 constexpr UINT SCI_GETLEXERLANGUAGE = 4012;
 constexpr UINT SCI_SETILEXER = 4033;
+constexpr UINT SCI_STYLESETFORE = 2051;
+constexpr UINT SCI_STYLESETBOLD = 2053;
+constexpr UINT SCI_STYLESETITALIC = 2054;
 constexpr UINT SCI_GETDOCPOINTER = 2357;
 constexpr UINT SCI_INDICSETSTYLE = 2080;
 constexpr UINT SCI_INDICSETFORE = 2081;
@@ -186,7 +190,7 @@ constexpr int kShrinkSelectionCommandIndex = 9;
 constexpr int kHighlightOccurrencesCommandIndex = 10;
 constexpr int kShowSymbolPathCommandIndex = 11;
 
-std::string DetectTreeSitterLanguageForFile(const std::wstring& path);
+std::string DetectTreeSitterLanguageForFile(const std::wstring& path, const std::string& contentHint = {});
 
 struct TagEntry {
     std::string name;
@@ -527,6 +531,39 @@ bool CanInstallBundledGrammarForCurrentFile(HWND hSci)
     return IsBundledGrammarBuildAvailable(language);
 }
 
+// Apply the tree-sitter style palette directly to the Scintilla view. Notepad++
+// only applies the <LexerType> WordsStyle colors from TreeSitterLexer.xml for
+// menu-selected languages that have an entry there (the original curated set), and
+// it does not restore external-lexer styles on session reload. Setting the colors
+// here makes EVERY grammar color correctly regardless of menu exposure / XML.
+void ApplyTreeSitterStyleColors(HWND hSci)
+{
+    // Indexed by TSStyle id (0..13); 0xRRGGBB, matching TreeSitterLexer.xml.
+    static const int kFore[] = {
+        0x000000, // 0 default
+        0x008000, // 1 comment
+        0x008000, // 2 commentDoc
+        0x0000FF, // 3 keyword
+        0x808080, // 4 string
+        0xFF8000, // 5 number
+        0x000080, // 6 operator
+        0x800080, // 7 function
+        0x008080, // 8 type
+        0x804000, // 9 preprocessor
+        0x800000, // 10 variable
+        0xFF0000, // 11 constant
+        0x404040, // 12 punctuation
+        0x0000FF, // 13 tag
+    };
+    for (int i = 0; i < static_cast<int>(std::size(kFore)); ++i) {
+        const int rgb = kFore[i];
+        const COLORREF bgr = ((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb >> 16) & 0xFF);
+        ::SendMessageW(hSci, SCI_STYLESETFORE, i, static_cast<LPARAM>(bgr));
+    }
+    ::SendMessageW(hSci, SCI_STYLESETBOLD, 3, 1);    // keyword bold
+    ::SendMessageW(hSci, SCI_STYLESETITALIC, 2, 1);  // doc comment italic
+}
+
 bool ActivateTreeSitterLexer(HWND hSci, const std::string& language)
 {
     if (!hSci || language.empty())
@@ -539,6 +576,7 @@ bool ActivateTreeSitterLexer(HWND hSci, const std::string& language)
         return false;
 
     ::SendMessageW(hSci, SCI_SETILEXER, 0, reinterpret_cast<LPARAM>(lexer));
+    ApplyTreeSitterStyleColors(hSci);
     ::SendMessageW(hSci, SCI_CLEARDOCUMENTSTYLE, 0, 0);
     const auto docLen = static_cast<Sci_Position>(::SendMessageW(hSci, SCI_GETLENGTH, 0, 0));
     ::SendMessageW(hSci, SCI_COLOURISE, 0, static_cast<LPARAM>(docLen));
@@ -577,13 +615,191 @@ bool TryInstallBundledGrammar(const std::string& language)
     return copiedAny;
 }
 
-std::string DetectTreeSitterLanguageForFile(const std::wstring& path)
+// Map an interpreter/mode token (from a shebang or an emacs mode line) to one of
+// the grammars we ship. Tokens are matched case-insensitively after stripping a
+// trailing version digit (e.g. "python3" -> "python") and any "-ts"/"-mode"
+// suffix used by emacs major-mode names (e.g. "python-ts-mode" -> "python").
+std::string LanguageFromInterpreterToken(std::string token)
+{
+    for (auto& c : token)
+        c = static_cast<char>(::tolower(static_cast<unsigned char>(c)));
+
+    // Drop emacs major-mode decorations: "python-ts-mode" / "c++-mode" -> "python" / "c++".
+    for (const char* suffix : { "-ts-mode", "-mode", "-ts" }) {
+        const size_t len = std::strlen(suffix);
+        if (token.size() > len && token.compare(token.size() - len, len, suffix) == 0) {
+            token.resize(token.size() - len);
+            break;
+        }
+    }
+    // Drop a trailing interpreter version ("python3", "python2.7", "ruby2").
+    while (!token.empty() && (std::isdigit(static_cast<unsigned char>(token.back())) || token.back() == '.'))
+        token.pop_back();
+
+    static const std::unordered_map<std::string, std::string> kTokenMap = {
+        { "python", "python" }, { "py", "python" },
+        { "bash", "bash" }, { "sh", "bash" }, { "zsh", "bash" }, { "ksh", "bash" },
+        { "dash", "bash" }, { "ash", "bash" }, { "shell", "bash" }, { "shell-script", "bash" },
+        { "ruby", "ruby" }, { "perl", "perl" }, { "raku", "perl" },
+        { "node", "javascript" }, { "nodejs", "javascript" }, { "javascript", "javascript" }, { "js", "javascript" },
+        { "lua", "lua" }, { "php", "php" }, { "r", "r" }, { "rscript", "r" }, { "littler", "r" },
+        { "scheme", "scheme" }, { "guile", "scheme" }, { "chicken", "scheme" }, { "csi", "scheme" },
+        { "racket", "racket" },
+        { "sbcl", "commonlisp" }, { "lisp", "commonlisp" }, { "clisp", "commonlisp" }, { "ecl", "commonlisp" },
+        { "common-lisp", "commonlisp" }, { "commonlisp", "commonlisp" }, { "lisp-interaction", "commonlisp" },
+        { "clojure", "clojure" }, { "clj", "clojure" }, { "clojurescript", "clojure" }, { "clojurec", "clojure" },
+        { "bb", "clojure" }, { "babashka", "clojure" },
+        { "emacs-lisp", "elisp" }, { "elisp", "elisp" },
+        { "julia", "julia" }, { "elixir", "elixir" }, { "iex", "elixir" },
+        { "escript", "erlang" }, { "erlang", "erlang" },
+        { "haskell", "haskell" }, { "runhaskell", "haskell" }, { "runghc", "haskell" }, { "stack", "haskell" },
+        { "swift", "swift" }, { "scala", "scala" }, { "ocaml", "ocaml" }, { "ocamlrun", "ocaml" },
+        { "tcc", "c" }, { "c++", "cpp" }, { "cpp", "cpp" }, { "c", "c" },
+        { "fsharpi", "fsharp" }, { "dotnet-script", "fsharp" },
+        { "tex", "latex" }, { "latex", "latex" }, { "xelatex", "latex" }, { "pdflatex", "latex" }, { "lualatex", "latex" },
+        { "sql", "sql" }, { "nix", "nix" }, { "nix-shell", "nix" },
+        { "make", "make" }, { "makefile", "make" }, { "cmake", "cmake" },
+        { "vhdl", "vhdl" }, { "verilog", "verilog" }, { "systemverilog", "verilog" },
+        { "asm", "asm" }, { "nasm", "asm" }, { "gas", "asm" },
+        { "hcl", "hcl" }, { "terraform", "hcl" },
+        { "proto", "proto" }, { "protobuf", "proto" },
+        { "dockerfile", "dockerfile" },
+    };
+    const auto it = kTokenMap.find(token);
+    return it != kTokenMap.end() ? it->second : std::string{};
+}
+
+// Recognize a shebang ("#!/usr/bin/env python3", "#!/bin/bash", "#!/usr/bin/perl -w")
+// and resolve the interpreter to a grammar.
+std::string DetectFromShebang(const std::string& firstLine)
+{
+    if (firstLine.size() < 2 || firstLine[0] != '#' || firstLine[1] != '!')
+        return {};
+
+    // Split the shebang into whitespace-delimited words after "#!".
+    std::vector<std::string> words;
+    std::string word;
+    for (size_t i = 2; i < firstLine.size(); ++i) {
+        const char c = firstLine[i];
+        if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+            if (!word.empty()) { words.push_back(word); word.clear(); }
+        } else {
+            word.push_back(c);
+        }
+    }
+    if (!word.empty())
+        words.push_back(word);
+    if (words.empty())
+        return {};
+
+    auto baseName = [](std::string p) -> std::string {
+        const auto slash = p.find_last_of("/\\");
+        return slash == std::string::npos ? p : p.substr(slash + 1);
+    };
+
+    // The interpreter is the first word's basename; "env" defers to the next word.
+    std::string interp = baseName(words[0]);
+    if ((interp == "env" || interp.empty()) && words.size() > 1) {
+        // Skip env options like "-S" and VAR=value assignments.
+        for (size_t i = 1; i < words.size(); ++i) {
+            const std::string& w = words[i];
+            if (!w.empty() && w[0] == '-')
+                continue;
+            if (w.find('=') != std::string::npos)
+                continue;
+            interp = baseName(w);
+            break;
+        }
+    }
+    return LanguageFromInterpreterToken(interp);
+}
+
+// Recognize an emacs file-local mode line within the first two lines:
+//   "-*- mode: python -*-"  or the shorthand  "-*- ruby -*-".
+std::string DetectFromEmacsModeline(const std::string& text)
+{
+    // Limit the scan to the first two lines, where emacs looks for the mode line.
+    size_t scanEnd = 0;
+    int newlines = 0;
+    for (; scanEnd < text.size() && newlines < 2; ++scanEnd) {
+        if (text[scanEnd] == '\n')
+            ++newlines;
+    }
+    const std::string head = text.substr(0, scanEnd);
+
+    const auto open = head.find("-*-");
+    if (open == std::string::npos)
+        return {};
+    const auto close = head.find("-*-", open + 3);
+    if (close == std::string::npos)
+        return {};
+
+    std::string body = head.substr(open + 3, close - (open + 3));
+
+    // Form 1: a property list containing "mode: <name>" (possibly among others).
+    const auto modePos = body.find("mode:");
+    std::string token;
+    if (modePos != std::string::npos) {
+        size_t i = modePos + 5;
+        while (i < body.size() && (body[i] == ' ' || body[i] == '\t'))
+            ++i;
+        while (i < body.size() && body[i] != ';' && body[i] != ' ' && body[i] != '\t')
+            token.push_back(body[i++]);
+    } else if (body.find(':') == std::string::npos) {
+        // Form 2 (shorthand): the whole body is the mode name.
+        size_t start = body.find_first_not_of(" \t");
+        size_t stop = body.find_last_not_of(" \t");
+        if (start != std::string::npos)
+            token = body.substr(start, stop - start + 1);
+    }
+    if (token.empty())
+        return {};
+    return LanguageFromInterpreterToken(token);
+}
+
+std::string DetectTreeSitterLanguageForFile(const std::wstring& path, const std::string& contentHint)
 {
     const std::wstring fileName = GetFileNameLower(path);
-    if (fileName == L"dockerfile")
-        return "dockerfile";
-    if (fileName == L"cmakelists.txt")
-        return "cmake";
+
+    // Whole-filename matches for files whose extension is absent or misleading.
+    // Only names backed by a grammar we ship are listed here.
+    static const std::unordered_map<std::wstring, std::string> kFileNameMap = {
+        { L"dockerfile", "dockerfile" },
+        { L"containerfile", "dockerfile" },
+        { L"cmakelists.txt", "cmake" },
+        { L"rakefile", "ruby" },
+        { L"gemfile", "ruby" },
+        { L"podfile", "ruby" },
+        { L"guardfile", "ruby" },
+        { L"capfile", "ruby" },
+        { L"thorfile", "ruby" },
+        { L"berksfile", "ruby" },
+        { L"brewfile", "ruby" },
+        { L"vagrantfile", "ruby" },
+        { L"rebar.config", "erlang" },
+        { L"rebar.lock", "erlang" },
+        { L"emakefile", "erlang" },
+        { L"pkgbuild", "bash" },
+        { L".bashrc", "bash" },
+        { L".bash_profile", "bash" },
+        { L".bash_login", "bash" },
+        { L".bash_logout", "bash" },
+        { L".bash_aliases", "bash" },
+        { L".profile", "bash" },
+        { L".zshrc", "bash" },
+        { L".zshenv", "bash" },
+        { L".zprofile", "bash" },
+        { L".zlogin", "bash" },
+        { L".zlogout", "bash" },
+        { L"sconstruct", "python" },
+        { L"sconscript", "python" },
+        { L"wscript", "python" },
+    };
+    {
+        const auto it = kFileNameMap.find(fileName);
+        if (it != kFileNameMap.end())
+            return it->second;
+    }
 
     const std::wstring extension = GetFileExtensionLower(path);
     static const std::unordered_map<std::wstring, std::string> kExtensionMap = {
@@ -651,11 +867,76 @@ std::string DetectTreeSitterLanguageForFile(const std::wstring& path)
         { L"pas", "pascal" },
         { L"pp", "pascal" },
         { L"inc", "pascal" },
+        { L"swift", "swift" },
+        { L"scala", "scala" },
+        { L"sbt", "scala" },
+        { L"sc", "scala" },
+        { L"hs", "haskell" },
+        { L"ml", "ocaml" },
+        { L"mli", "ocaml_interface" },
+        { L"jl", "julia" },
+        { L"ex", "elixir" },
+        { L"exs", "elixir" },
+        { L"zig", "zig" },
+        { L"elm", "elm" },
+        { L"nix", "nix" },
+        { L"kt", "kotlin" },
+        { L"ktm", "kotlin" },
+        { L"kts", "kotlin" },
+        { L"erl", "erlang" },
+        { L"hrl", "erlang" },
+        { L"es", "erlang" },
+        { L"escript", "erlang" },
+        { L"xrl", "erlang" },
+        { L"yrl", "erlang" },
+        { L"sol", "solidity" },
+        { L"scm", "scheme" },
+        { L"ss", "scheme" },
+        { L"rkt", "racket" },
+        { L"el", "elisp" },
+        { L"clj", "clojure" },
+        { L"cljs", "clojure" },
+        { L"cljc", "clojure" },
+        { L"cljd", "clojure" },
+        { L"edn", "clojure" },
+        { L"bb", "clojure" },
+        { L"lisp", "commonlisp" },
+        { L"lsp", "commonlisp" },
+        { L"cl", "commonlisp" },
+        { L"v", "verilog" },
+        { L"vh", "verilog" },
+        { L"sv", "verilog" },
+        { L"svh", "verilog" },
+        { L"vhd", "vhdl" },
+        { L"vhdl", "vhdl" },
+        { L"asm", "asm" },
+        { L"s", "asm" },
+        { L"hcl", "hcl" },
+        { L"tf", "hcl" },
+        { L"tfvars", "hcl" },
+        { L"nomad", "hcl" },
+        { L"proto", "proto" },
     };
 
     const auto it = kExtensionMap.find(extension);
     if (it != kExtensionMap.end())
         return it->second;
+
+    // Content-based fallbacks (like difftastic): an emacs mode line wins over a
+    // shebang, mirroring emacs/difftastic precedence. Only consulted when neither
+    // the filename nor the extension resolved the language.
+    if (!contentHint.empty()) {
+        std::string lang = DetectFromEmacsModeline(contentHint);
+        if (!lang.empty())
+            return lang;
+
+        const auto lineEnd = contentHint.find('\n');
+        const std::string firstLine = contentHint.substr(0, lineEnd);
+        lang = DetectFromShebang(firstLine);
+        if (!lang.empty())
+            return lang;
+    }
+
     return {};
 }
 
@@ -682,6 +963,30 @@ std::string GetDocumentText(HWND hSci)
     const auto docEnd = static_cast<Sci_Position>(::SendMessageW(hSci, SCI_GETLENGTH, 0, 0));
     if (docEnd <= 0)
         return {};
+
+    std::string text(static_cast<size_t>(docEnd) + 1, '\0');
+    Sci_TextRangeFull range{};
+    range.chrg.cpMin = 0;
+    range.chrg.cpMax = docEnd;
+    range.lpstrText = text.data();
+    ::SendMessageW(hSci, SCI_GETTEXTRANGEFULL, 0, reinterpret_cast<LPARAM>(&range));
+    text.resize(static_cast<size_t>(docEnd));
+    return text;
+}
+
+// Read at most maxBytes from the start of the document. Used for the cheap
+// shebang / emacs mode line sniff so language auto-detection does not copy the
+// entire (possibly multi-MB) buffer on every activation.
+std::string GetDocumentTextPrefix(HWND hSci, Sci_Position maxBytes)
+{
+    if (!hSci || maxBytes <= 0)
+        return {};
+
+    Sci_Position docEnd = static_cast<Sci_Position>(::SendMessageW(hSci, SCI_GETLENGTH, 0, 0));
+    if (docEnd <= 0)
+        return {};
+    if (docEnd > maxBytes)
+        docEnd = maxBytes;
 
     std::string text(static_cast<size_t>(docEnd) + 1, '\0');
     Sci_TextRangeFull range{};
@@ -1687,9 +1992,15 @@ void autoDetectTreeSitterLanguage()
     }
 
     const std::wstring path = GetCurrentFilePath();
-    const std::string language = DetectTreeSitterLanguageForFile(path);
+    // Filename + extension first (cheap). Only read buffer content - and only a
+    // small prefix - for the shebang / emacs mode line fallback when those don't
+    // resolve. This runs on every buffer activation, so avoid copying the whole
+    // document for the common (recognized-extension) case.
+    std::string language = DetectTreeSitterLanguageForFile(path);
+    if (language.empty())
+        language = DetectTreeSitterLanguageForFile(path, GetDocumentTextPrefix(hSci, 2048));
     if (language.empty()) {
-        ShowStatus(L"TreeSitterLexer: no tree-sitter lexer mapped for this extension");
+        ShowStatus(L"TreeSitterLexer: no tree-sitter lexer mapped for this file");
         return;
     }
 
@@ -1703,32 +2014,39 @@ void autoDetectTreeSitterLanguage()
 
     const std::string currentLexer = GetCurrentLexerName(hSci);
     const std::string targetLexer = "treesitter." + language;
-    if (ToLowerAscii(currentLexer) == ToLowerAscii(targetLexer)) {
-        ShowStatus(L"TreeSitterLexer: matching tree-sitter lexer already active");
-        return;
-    }
 
     if (!IsGenericLexerName(currentLexer) && PreferBuiltInLexerForExtension(extension)) {
         ShowStatus(L"TreeSitterLexer: keeping the current built-in lexer for this file type");
         return;
     }
 
-    UINT commandId = 0;
-    HMENU mainMenu = reinterpret_cast<HMENU>(::SendMessageW(g_nppData._nppHandle, NPPM_GETMENUHANDLE,
-        static_cast<WPARAM>(NPPMAINMENU), 0));
-    std::wstring targetMenuText(targetLexer.begin(), targetLexer.end());
-    if (!TryFindMenuCommandByText(mainMenu, targetMenuText, commandId)) {
-        ShowStatus(L"TreeSitterLexer: could not find the language menu entry");
+    // We apply the lexer + our color palette directly via Scintilla rather than via
+    // Notepad++'s Languages-menu command: that only colors the curated languages
+    // that have an XML <LexerType>, is capped by NB_MAX_EXTERNAL_LANG, and is not
+    // re-applied on session reload (so a file remembered as treesitter.<lang> would
+    // show no colors). Applying here colors every grammar uniformly.
+    if (ToLowerAscii(currentLexer) == ToLowerAscii(targetLexer)) {
+        // Our lexer is already attached to this buffer. Notepad++ reuses one
+        // Scintilla view across tabs and style colors are per-view, so re-assert
+        // the palette (cheap). Only re-parse if the document isn't already fully
+        // styled (e.g. just restored from a session) - this avoids re-lexing the
+        // whole file every time the tab is revisited.
+        ApplyTreeSitterStyleColors(hSci);
+        const auto docLen = static_cast<Sci_Position>(::SendMessageW(hSci, SCI_GETLENGTH, 0, 0));
+        const auto endStyled = static_cast<Sci_Position>(::SendMessageW(hSci, SCI_GETENDSTYLED, 0, 0));
+        if (endStyled < docLen)
+            ::SendMessageW(hSci, SCI_COLOURISE, 0, static_cast<LPARAM>(docLen));
+        UpdateDefinitionCommandState();
         return;
     }
 
-    if (!::SendMessageW(g_nppData._nppHandle, NPPM_MENUCOMMAND, 0, static_cast<LPARAM>(commandId))) {
-        ShowStatus(L"TreeSitterLexer: failed to switch language");
+    if (!ActivateTreeSitterLexer(hSci, language)) {
+        ShowStatus(L"TreeSitterLexer: could not activate lexer for this file");
         return;
     }
 
-    std::wstring status = L"TreeSitterLexer: auto-detected ";
-    status.append(targetMenuText.begin(), targetMenuText.end());
+    std::wstring status = L"TreeSitterLexer: auto-detected treesitter.";
+    status.append(targetLexer.begin() + std::string("treesitter.").size(), targetLexer.end());
     ShowStatus(status);
 
     UpdateDefinitionCommandState();
@@ -1755,7 +2073,7 @@ void installMissingBundledGrammar()
     }
 
     const std::wstring path = GetCurrentFilePath();
-    const std::string language = DetectTreeSitterLanguageForFile(path);
+    const std::string language = DetectTreeSitterLanguageForFile(path, GetDocumentText(hSci));
     if (language.empty()) {
         ShowStatus(L"TreeSitterLexer: no bundled grammar mapping for this file");
         ShowInstallResultDialog(

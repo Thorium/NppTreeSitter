@@ -1156,26 +1156,6 @@ void TreeSitterRegistry::DiscoverAvailableLanguages()
 {
     m_languageNames.clear();
 
-    static const std::unordered_set<std::string> kExposedLanguages = {
-        "python",
-        "rust",
-        "go",
-        "c",
-        "cpp",
-        "c-sharp",
-        "javascript",
-        "typescript",
-        "java",
-        "json",
-        "html",
-        "css",
-        "bash",
-        "ruby",
-        "php",
-        "xml",
-        "fsharp",
-    };
-
     // Check if directory exists
     DWORD attr = GetFileAttributesW(m_grammarDir.c_str());
     if (attr == INVALID_FILE_ATTRIBUTES || !(attr & FILE_ATTRIBUTE_DIRECTORY))
@@ -1188,6 +1168,7 @@ void TreeSitterRegistry::DiscoverAvailableLanguages()
     if (hFind == INVALID_HANDLE_VALUE)
         return;
 
+    std::vector<std::string> discovered;
     do {
         std::wstring fileName(fd.cFileName);
         const std::wstring prefix = L"tree-sitter-";
@@ -1196,20 +1177,47 @@ void TreeSitterRegistry::DiscoverAvailableLanguages()
             std::wstring langW = fileName.substr(
                 prefix.size(), fileName.size() - prefix.size() - suffix.size());
 
-            // Also verify the .scm file exists
+            // A grammar is usable only if it ships a highlights query.
             std::wstring scmPath = m_grammarDir + L"\\" + langW + L"-highlights.scm";
             DWORD scmAttr = GetFileAttributesW(scmPath.c_str());
             if (scmAttr != INVALID_FILE_ATTRIBUTES) {
                 std::string langA;
                 for (wchar_t ch : langW) langA += static_cast<char>(ch);
-                if (kExposedLanguages.count(langA) > 0)
-                    m_languageNames.push_back(langA);
+                discovered.push_back(langA);
             }
         }
     } while (FindNextFileW(hFind, &fd));
     FindClose(hFind);
 
-    // Sort for deterministic ordering
+    std::sort(discovered.begin(), discovered.end());
+
+    // Notepad++ stores external languages in a fixed-size array
+    // (NB_MAX_EXTERNAL_LANG). Reporting more than it via GetLexerCount overflows
+    // that array and crashes Notepad++ on load, so only a bounded subset may be
+    // exposed in the Languages menu. We prioritise common/widely-used languages
+    // for those slots; EVERY other grammar still works through "Auto-detect
+    // Tree-sitter Language", which applies the lexer directly (SCI_SETILEXER) and
+    // is not subject to this limit.
+    static const size_t kMaxExposedLanguages = 28;
+    static const char* kPreferred[] = {
+        "python", "javascript", "typescript", "java", "c", "cpp", "c-sharp",
+        "go", "rust", "html", "css", "json", "xml", "bash", "ruby", "php", "fsharp",
+        "sql", "clojure", "scheme", "perl", "verilog", "vhdl", "asm", "hcl", "proto",
+    };
+
+    std::unordered_set<std::string> available(discovered.begin(), discovered.end());
+    std::unordered_set<std::string> added;
+    for (const char* pref : kPreferred) {
+        if (m_languageNames.size() >= kMaxExposedLanguages) break;
+        std::string s(pref);
+        if (available.count(s) && added.insert(s).second)
+            m_languageNames.push_back(s);
+    }
+    for (const auto& s : discovered) {
+        if (m_languageNames.size() >= kMaxExposedLanguages) break;
+        if (added.insert(s).second)
+            m_languageNames.push_back(s);
+    }
     std::sort(m_languageNames.begin(), m_languageNames.end());
 
     for (const auto& langName : m_languageNames)

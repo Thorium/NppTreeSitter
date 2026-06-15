@@ -1,0 +1,241 @@
+=== TreeSitterLexer Grammar Builder ===
+Platform:      x64
+Configuration: Release
+Output:        C:\git\NppTreeSitter\build\x64\Release\TreeSitterGrammars
+
+Importing MSVC environment (amd64) ...
+  cl.exe: C:\Program Files\Microsoft Visual Studio\18\Professional\VC\Tools\MSVC\14.50.35717\bin\HostX64\x64\cl.exe
+
+--- tree-sitter-python (v0.25.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-python (v0.25.0)
+  Skipping python (filtered)
+
+--- tree-sitter-rust (v0.24.1) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-rust (v0.24.1)
+  Skipping rust (filtered)
+
+--- tree-sitter-go (v0.25.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-go (v0.25.0)
+  Skipping go (filtered)
+
+--- tree-sitter-c (v0.24.1) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-c (v0.24.1)
+  Skipping c (filtered)
+
+--- tree-sitter-cpp (v0.23.4) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-cpp (v0.23.4)
+  Skipping cpp (filtered)
+
+--- tree-sitter-c-sharp (v0.23.1) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-c-sharp (v0.23.1)
+  Skipping c-sharp (filtered)
+
+--- tree-sitter-javascript (v0.25.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-javascript (v0.25.0)
+  Skipping javascript (filtered)
+
+--- tree-sitter-typescript (v0.23.2) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-typescript (v0.23.2)
+  Skipping typescript (filtered)
+  Skipping tsx (filtered)
+  Skipping flow (filtered)
+
+--- tree-sitter-java (v0.23.5) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-java (v0.23.5)
+  Skipping java (filtered)
+
+--- tree-sitter-json (v0.24.8) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-json (v0.24.8)
+  Skipping json (filtered)
+
+--- tree-sitter-html (v0.23.2) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-html (v0.23.2)
+  Skipping html (filtered)
+
+--- tree-sitter-css (v0.25.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-css (v0.25.0)
+  Skipping css (filtered)
+
+--- tree-sitter-bash (v0.25.1) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-bash (v0.25.1)
+  Skipping bash (filtered)
+
+--- tree-sitter-ruby (v0.23.1) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-ruby (v0.23.1)
+  Skipping ruby (filtered)
+
+--- tree-sitter-php (v0.24.2) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-php (v0.24.2)
+  Skipping php (filtered)
+  Skipping php_only (filtered)
+
+--- tree-sitter-xml (v0.7.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-xml (v0.7.0)
+  Skipping xml (filtered)
+  Skipping dtd (filtered)
+
+--- tree-sitter-fsharp (0.3.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-fsharp (0.3.0)
+  Skipping fsharp (filtered)
+  Skipping fsharp_signature (filtered)
+
+--- tree-sitter-r (v1.2.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-r (v1.2.0)
+  Skipping r (filtered)
+
+--- tree-sitter-lua (v0.5.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-lua (v0.5.0)
+  Skipping lua (filtered)
+
+--- tree-sitter-yaml (v0.7.2) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-yaml (v0.7.2)
+  Skipping yaml (filtered)
+
+--- tree-sitter-toml (v0.7.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-toml (v0.7.0)
+  Skipping toml (filtered)
+
+--- tree-sitter-markdown (v0.5.3) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-markdown (v0.5.3)
+  Skipping markdown (filtered)
+  Skipping markdown_inline (filtered)
+
+--- tree-sitter-cmake (v0.7.2) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-cmake (v0.7.2)
+  Skipping cmake (filtered)
+
+--- tree-sitter-fortran (v0.6.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-fortran (v0.6.0)
+  Skipping fortran (filtered)
+
+--- tree-sitter-pascal (v0.10.2) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-pascal (v0.10.2)
+  Skipping pascal (filtered)
+
+--- tree-sitter-matlab (v1.3.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-matlab (v1.3.0)
+  Skipping matlab (filtered)
+
+--- tree-sitter-swift (0.7.3-with-generated-files) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-swift (0.7.3-with-generated-files)
+  Skipping swift (filtered)
+
+--- tree-sitter-scala (v0.26.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-scala (v0.26.0)
+  Skipping scala (filtered)
+
+--- tree-sitter-haskell (v0.23.1) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-haskell (v0.23.1)
+  Grammar: haskell (path: .)
+  Wrote highlights -> haskell-highlights.scm
+  Wrote locals -> haskell-locals.scm
+  Wrote injections -> haskell-injections.scm
+
+--- tree-sitter-ocaml (v0.24.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-ocaml (v0.24.0)
+  Skipping ocaml (filtered)
+  Skipping ocaml_interface (filtered)
+  Skipping ocaml_type (filtered)
+
+--- tree-sitter-julia (v0.23.1) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-julia (v0.23.1)
+  Skipping julia (filtered)
+
+--- tree-sitter-elixir (v0.3.4) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-elixir (v0.3.4)
+  Skipping elixir (filtered)
+
+--- tree-sitter-zig (v1.1.2) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-zig (v1.1.2)
+  Skipping zig (filtered)
+
+--- tree-sitter-elm (v5.8.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-elm (v5.8.0)
+  Skipping elm (filtered)
+
+--- tree-sitter-nix (v0.3.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-nix (v0.3.0)
+  Skipping nix (filtered)
+
+--- tree-sitter-kotlin (0.3.8) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-kotlin (0.3.8)
+  No tree-sitter.json; using name 'kotlin' from grammars.json
+  Skipping kotlin (filtered)
+
+--- tree-sitter-erlang (0.16) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-erlang (0.16)
+  No tree-sitter.json; using name 'erlang' from grammars.json
+  Skipping erlang (filtered)
+
+--- tree-sitter-solidity (v1.2.13) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-solidity (v1.2.13)
+  Skipping solidity (filtered)
+
+--- tree-sitter-sql (v0.3.8) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-sql (v0.3.8)
+  Grammar: sql (path: .)
+  Generating parser sources for sql ...
+  Wrote highlights -> sql-highlights.scm
+
+--- tree-sitter-scheme (v0.24.7) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-scheme (v0.24.7)
+  Skipping scheme (filtered)
+
+--- tree-sitter-racket (v0.24.7) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-racket (v0.24.7)
+  Skipping racket (filtered)
+
+--- tree-sitter-elisp (1.6.1) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-elisp (1.6.1)
+  Skipping elisp (filtered)
+
+--- tree-sitter-clojure (v0.0.13) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-clojure (v0.0.13)
+  No tree-sitter.json; using name 'clojure' from grammars.json
+  Skipping clojure (filtered)
+
+--- tree-sitter-commonlisp (v0.4.1) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-commonlisp (v0.4.1)
+  Skipping commonlisp (filtered)
+
+--- tree-sitter-perl (v1.1.2) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-perl (v1.1.2)
+  Skipping perl (filtered)
+
+--- tree-sitter-verilog (v1.0.3) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-verilog (v1.0.3)
+  Grammar: verilog (path: .)
+  Wrote highlights -> verilog-highlights.scm
+
+--- tree-sitter-vhdl (v1.4.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-vhdl (v1.4.0)
+  Skipping vhdl (filtered)
+
+--- tree-sitter-latex (v0.6.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-latex (v0.6.0)
+  Grammar: latex (path: .)
+  Generating parser sources for latex ...
+  Wrote highlights -> latex-highlights.scm
+
+--- tree-sitter-asm (v0.24.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-asm (v0.24.0)
+  Skipping asm (filtered)
+
+--- tree-sitter-hcl (v1.1.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-hcl (v1.1.0)
+  No tree-sitter.json; using name 'hcl' from grammars.json
+  Grammar: hcl (path: .)
+  Wrote highlights -> hcl-highlights.scm
+
+--- tree-sitter-proto (0.4.0) ---
+  Cached: C:\git\NppTreeSitter\BuildTmp\grammar-sources\tree-sitter-proto (0.4.0)
+  Skipping proto (filtered)
+
+Building 5 grammar(s) with up to 20 parallel job(s) ...
+  OK: tree-sitter-hcl.dll
+  OK: tree-sitter-haskell.dll
+  OK: tree-sitter-latex.dll
+  OK: tree-sitter-verilog.dll
+  OK: tree-sitter-sql.dll
+
+=== Done: 5 built, 0 up-to-date, 0 failed, 54 skipped ===
