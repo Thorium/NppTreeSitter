@@ -657,4 +657,10 @@ if ($plans.Count -gt 0) {
 
 Write-Host ""
 Write-Host "=== Done: $succeeded built, $cached up-to-date, $failed failed, $skipped skipped ==="
+# Exit deterministically on the tracked failure count. Without an explicit exit
+# code, GitHub Actions' pwsh epilogue runs `exit $LASTEXITCODE`, which leaks the
+# exit code of the last native command (e.g. a tar.exe that failed and we then
+# handled by falling back to the source-zip). That made a fully successful build
+# report failure. Force success here so only real failures ($failed) fail the job.
 if ($failed -gt 0) { exit 1 }
+exit 0
