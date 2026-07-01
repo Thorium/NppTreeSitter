@@ -524,24 +524,24 @@ void SCI_METHOD TreeSitterILexer::Lex(Sci_PositionU startPos, Sci_Position lengt
     // reused. This turns the per-keystroke cost from O(document) to roughly
     // O(edit size + reused-subtree fixups), which matters for large files.
     // Falls back to a full reparse when there is no prior tree.
-    const std::string newText(docText, static_cast<size_t>(docLen));
-
+    // Diff the previous snapshot (m_lastText) against the live buffer directly,
+    // without materialising a second full-document copy per Lex() call.
     if (m_tree && !m_lastText.empty()) {
         const std::string& oldText = m_lastText;
         const uint32_t oldLen = static_cast<uint32_t>(oldText.size());
-        const uint32_t newLen = static_cast<uint32_t>(newText.size());
+        const uint32_t newLen = static_cast<uint32_t>(docLen);
 
         // Longest common prefix.
         uint32_t prefix = 0;
         const uint32_t maxPrefix = (oldLen < newLen) ? oldLen : newLen;
-        while (prefix < maxPrefix && oldText[prefix] == newText[prefix])
+        while (prefix < maxPrefix && oldText[prefix] == docText[prefix])
             prefix++;
 
         // Longest common suffix that does not overlap the shared prefix.
         uint32_t suffix = 0;
         const uint32_t maxSuffix = maxPrefix - prefix;
         while (suffix < maxSuffix &&
-               oldText[oldLen - 1 - suffix] == newText[newLen - 1 - suffix])
+               oldText[oldLen - 1 - suffix] == docText[newLen - 1 - suffix])
             suffix++;
 
         TSInputEdit edit;
@@ -550,7 +550,7 @@ void SCI_METHOD TreeSitterILexer::Lex(Sci_PositionU startPos, Sci_Position lengt
         edit.new_end_byte  = newLen - suffix;
         edit.start_point   = PointAtByte(oldText.data(), oldLen, edit.start_byte);
         edit.old_end_point = PointAtByte(oldText.data(), oldLen, edit.old_end_byte);
-        edit.new_end_point = PointAtByte(newText.data(), newLen, edit.new_end_byte);
+        edit.new_end_point = PointAtByte(docText, newLen, edit.new_end_byte);
         ts_tree_edit(m_tree, &edit);
 
         TSTree* newTree = ts_parser_parse_string(m_parser, m_tree,
@@ -570,7 +570,7 @@ void SCI_METHOD TreeSitterILexer::Lex(Sci_PositionU startPos, Sci_Position lengt
         m_lastText.clear();
         return;
     }
-    m_lastText = newText;
+    m_lastText.assign(docText, static_cast<size_t>(docLen));
 
     // Compute the byte range to style
     Sci_PositionU endPos = startPos + static_cast<Sci_PositionU>(lengthDoc);
@@ -607,6 +607,11 @@ void SCI_METHOD TreeSitterILexer::Lex(Sci_PositionU startPos, Sci_Position lengt
     if (localsQuery) {
         TSQueryCursor* lCursor = ts_query_cursor_new();
         if (lCursor) {
+            // Restrict to the styled range. Scopes that merely overlap the range
+            // (e.g. a function body enclosing the viewport) still match, since
+            // set_byte_range keeps matches whose nodes intersect the range.
+            ts_query_cursor_set_byte_range(lCursor,
+                static_cast<uint32_t>(startPos), static_cast<uint32_t>(endPos));
             ts_query_cursor_exec(lCursor, localsQuery, rootNode);
 
             TSQueryMatch match;
@@ -694,8 +699,15 @@ void SCI_METHOD TreeSitterILexer::Lex(Sci_PositionU startPos, Sci_Position lengt
     if (!cursor)
         return;
 
-    // No byte range restriction — we need full-tree highlights for
-    // locals resolution (definitions may be outside the styled range).
+    // Restrict the (expensive) highlight query to the range Scintilla asked us
+    // to style, so per-edit cost scales with the viewport rather than the whole
+    // document. This is the main win for typing latency in large files.
+    // Trade-off: a reference whose definition lies outside the styled range is
+    // not recoloured by the locals pass until a full recolour runs (startPos 0
+    // .. docLen, e.g. on load or SCI_COLOURISE), which restores full-document
+    // accuracy.
+    ts_query_cursor_set_byte_range(cursor,
+        static_cast<uint32_t>(startPos), static_cast<uint32_t>(endPos));
     ts_query_cursor_exec(cursor, query, rootNode);
 
     std::vector<LexHighlight> highlights;
@@ -804,6 +816,10 @@ void SCI_METHOD TreeSitterILexer::Lex(Sci_PositionU startPos, Sci_Position lengt
     if (injQuery) {
         TSQueryCursor* ijCursor = ts_query_cursor_new();
         if (ijCursor) {
+            // Only process injections intersecting the styled range so off-screen
+            // embedded blocks aren't re-parsed from scratch on every edit.
+            ts_query_cursor_set_byte_range(ijCursor,
+                static_cast<uint32_t>(startPos), static_cast<uint32_t>(endPos));
             ts_query_cursor_exec(ijCursor, injQuery, rootNode);
 
             struct InjectionRegion {
