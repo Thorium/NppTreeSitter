@@ -12,13 +12,21 @@
   (tuple_expression
     (identifier) @local.definition.var))
 
-; let/const bindings
-(let_binding
+; let bindings (v0.25.0 dropped `let_binding`; bindings are now direct
+; identifier/assignment children of `let_statement`)
+(let_statement
   (identifier) @local.definition.var)
 
-(let_binding
-  (tuple_expression
+(let_statement
+  (assignment
+    .
     (identifier) @local.definition.var))
+
+(let_statement
+  (assignment
+    .
+    (tuple_expression
+      (identifier) @local.definition.var)))
 
 ; For bindings
 (for_binding
