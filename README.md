@@ -212,3 +212,5 @@ NppTreeSitter/
 ## License
 
 GPL-2.0-or-later
+
+<img width="348" height="403" alt="npptreesitter" src="https://github.com/user-attachments/assets/2da89078-a2a1-4d22-a64b-bc755d4a2067" />
