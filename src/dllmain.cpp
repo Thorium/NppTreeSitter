@@ -569,7 +569,11 @@ bool ActivateTreeSitterLexer(HWND hSci, const std::string& language)
     if (!hSci || language.empty())
         return false;
 
-    TreeSitterRegistry::Instance().Refresh(g_hModule);
+    // Initialize (scan once), not Refresh: this runs on every buffer
+    // activation, and a Refresh here would rescan the grammar directory and
+    // re-attempt LoadLibrary on known-broken DLLs each tab switch. Flows that
+    // change the grammar directory (bundled install) call Refresh explicitly.
+    TreeSitterRegistry::Instance().Initialize(g_hModule);
     const std::string lexerName = "treesitter." + language;
     Scintilla::ILexer5* lexer = TreeSitterRegistry::Instance().CreateLexer(lexerName.c_str());
     if (!lexer)
@@ -1248,16 +1252,14 @@ std::vector<LocalDef> CollectLocals(const TreeSitterGrammar* grammar, const std:
     return defs;
 }
 
-const TagEntry* FindLocalDefinitionAtCaret(const TreeSitterGrammar* grammar, const std::string& docText,
-    const SymbolOccurrence& symbol)
+bool FindLocalDefinitionAtCaret(const TreeSitterGrammar* grammar, const std::string& docText,
+    const SymbolOccurrence& symbol, TagEntry& out)
 {
     if (!symbol.valid)
-        return nullptr;
-
-    static std::vector<TagEntry> localResults;
-    localResults.clear();
+        return false;
 
     const std::vector<LocalDef> defs = CollectLocals(grammar, docText);
+    const LocalDef* best = nullptr;
     for (const auto& def : defs) {
         if (def.name != symbol.name)
             continue;
@@ -1269,25 +1271,23 @@ const TagEntry* FindLocalDefinitionAtCaret(const TreeSitterGrammar* grammar, con
             if (symbol.startByte < def.scopeStartByte || symbol.endByte > def.scopeEndByte)
                 continue;
         }
-
-        TagEntry entry;
-        entry.name = def.name;
-        entry.role = "definition";
-        entry.kind = "local";
-        entry.hasSymbolRange = true;
-        entry.symbolStartByte = def.startByte;
-        entry.symbolEndByte = def.endByte;
-        entry.startByte = def.startByte;
-        entry.endByte = def.endByte;
-        localResults.push_back(std::move(entry));
+        if (!best || def.startByte > best->startByte)
+            best = &def;
     }
 
-    const TagEntry* best = nullptr;
-    for (const auto& entry : localResults) {
-        if (!best || entry.startByte > best->startByte)
-            best = &entry;
-    }
-    return best;
+    if (!best)
+        return false;
+
+    out = TagEntry{};
+    out.name = best->name;
+    out.role = "definition";
+    out.kind = "local";
+    out.hasSymbolRange = true;
+    out.symbolStartByte = best->startByte;
+    out.symbolEndByte = best->endByte;
+    out.startByte = best->startByte;
+    out.endByte = best->endByte;
+    return true;
 }
 
 std::vector<TagEntry> CollectTags(const TreeSitterGrammar* grammar, const std::string& docText)
@@ -1439,36 +1439,35 @@ void SetMenuItemChecked(int commandIndex, bool checked)
         static_cast<LPARAM>(checked ? TRUE : FALSE));
 }
 
-const TagEntry* FindDefinitionAtCaret(HWND hSci)
+bool FindDefinitionAtCaret(HWND hSci, TagEntry& out)
 {
     if (!hSci)
-        return nullptr;
+        return false;
 
     const TreeSitterGrammar* grammar = GetActiveGrammar(hSci);
     if (!grammar)
-        return nullptr;
+        return false;
 
     const std::string docText = GetDocumentText(hSci);
     if (docText.empty())
-        return nullptr;
+        return false;
 
     const SymbolOccurrence symbol = GetCurrentSymbolOccurrence(hSci, docText);
     if (!symbol.valid)
-        return nullptr;
+        return false;
 
-    const TagEntry* best = FindLocalDefinitionAtCaret(grammar, docText, symbol);
-    if (best)
-        return best;
+    if (FindLocalDefinitionAtCaret(grammar, docText, symbol, out))
+        return true;
 
     if (!grammar->GetTagsQuery())
-        return nullptr;
+        return false;
 
-    static std::vector<TagEntry> cachedTags;
-    cachedTags = CollectTags(grammar, docText);
-    if (cachedTags.empty())
-        return nullptr;
+    const std::vector<TagEntry> tags = CollectTags(grammar, docText);
+    if (tags.empty())
+        return false;
 
-    for (const auto& tag : cachedTags) {
+    const TagEntry* best = nullptr;
+    for (const auto& tag : tags) {
         if (tag.name != symbol.name || tag.role != "definition")
             continue;
         if (tag.startByte == symbol.startByte && tag.endByte == symbol.endByte)
@@ -1478,7 +1477,7 @@ const TagEntry* FindDefinitionAtCaret(HWND hSci)
     }
 
     if (!best) {
-        for (const auto& tag : cachedTags) {
+        for (const auto& tag : tags) {
             if (tag.name == symbol.name && tag.role == "definition") {
                 best = &tag;
                 break;
@@ -1486,13 +1485,23 @@ const TagEntry* FindDefinitionAtCaret(HWND hSci)
         }
     }
 
-    return best;
+    if (!best)
+        return false;
+
+    out = *best;
+    return true;
 }
 
 void UpdateDefinitionCommandState()
 {
+    // Runs on every caret move (SCN_UPDATEUI), so it must stay cheap: no
+    // document copies and no parsing. Enable the commands whenever the active
+    // grammar can answer definition queries at all; the command handlers
+    // report "definition not found" in the status bar when there is no match.
     HWND hSci = GetCurrentScintilla();
-    const bool enabled = FindDefinitionAtCaret(hSci) != nullptr;
+    const TreeSitterGrammar* grammar = GetActiveGrammar(hSci);
+    const bool enabled = grammar &&
+        (grammar->GetLocalsQuery() != nullptr || grammar->GetTagsQuery() != nullptr);
     SetCommandEnabled(kGoToDefinitionCommandIndex, enabled);
     SetCommandEnabled(kSelectDefinitionCommandIndex, enabled);
 }
@@ -1751,10 +1760,82 @@ void showSymbolPath()
 // inside strings and comments are not highlighted.
 // ============================================================================
 
-// Last applied highlight state; caret moves that keep the same symbol in an
-// unmodified document skip the reparse entirely.
-struct OccurrenceCache {
+bool g_occurrenceTextDirty = false;
+
+// Cached parse of the document in the active view, reused across caret moves
+// so moving the caret to a different symbol only re-walks the existing tree
+// instead of copying and reparsing the whole document. Invalidated on any
+// text modification (g_occurrenceTextDirty) or when the view shows a
+// different document / grammar. `generation` increments on every reparse and
+// lets dependent caches detect staleness.
+struct ParsedTextCache {
     LRESULT docPointer = 0;
+    const TSLanguage* language = nullptr;
+    std::string text;
+    TSParser* parser = nullptr;
+    TSTree* tree = nullptr;
+    unsigned generation = 0;
+
+    void DropTree()
+    {
+        if (tree) {
+            ts_tree_delete(tree);
+            tree = nullptr;
+        }
+        text.clear();
+        text.shrink_to_fit();
+        docPointer = 0;
+        language = nullptr;
+    }
+};
+
+ParsedTextCache g_parsedTextCache;
+
+const ParsedTextCache* GetParsedText(HWND hSci, const TreeSitterGrammar* grammar)
+{
+    if (!hSci || !grammar || !grammar->GetLanguage())
+        return nullptr;
+
+    const auto docPointer = static_cast<LRESULT>(::SendMessageW(hSci, SCI_GETDOCPOINTER, 0, 0));
+    if (g_parsedTextCache.tree && !g_occurrenceTextDirty &&
+        g_parsedTextCache.docPointer == docPointer &&
+        g_parsedTextCache.language == grammar->GetLanguage()) {
+        return &g_parsedTextCache;
+    }
+
+    std::string docText = GetDocumentText(hSci);
+    if (docText.empty()) {
+        g_parsedTextCache.DropTree();
+        return nullptr;
+    }
+
+    if (!g_parsedTextCache.parser) {
+        g_parsedTextCache.parser = ts_parser_new();
+        if (!g_parsedTextCache.parser)
+            return nullptr;
+    }
+    ts_parser_set_language(g_parsedTextCache.parser, grammar->GetLanguage());
+    TSTree* tree = ts_parser_parse_string(g_parsedTextCache.parser, nullptr,
+        docText.c_str(), static_cast<uint32_t>(docText.size()));
+    if (!tree) {
+        g_parsedTextCache.DropTree();
+        return nullptr;
+    }
+
+    g_parsedTextCache.DropTree();
+    g_parsedTextCache.tree = tree;
+    g_parsedTextCache.text = std::move(docText);
+    g_parsedTextCache.docPointer = docPointer;
+    g_parsedTextCache.language = grammar->GetLanguage();
+    g_parsedTextCache.generation++;
+    g_occurrenceTextDirty = false;
+    return &g_parsedTextCache;
+}
+
+// Last applied highlight state; caret moves that keep the same symbol on the
+// same parse generation skip the tree walk entirely.
+struct OccurrenceCache {
+    unsigned generation = 0;
     std::string name;
     uint32_t startByte = 0;
     uint32_t endByte = 0;
@@ -1762,7 +1843,6 @@ struct OccurrenceCache {
 };
 
 OccurrenceCache g_occurrenceCache;
-bool g_occurrenceTextDirty = false;
 
 void EnsureOccurrenceIndicatorStyle(HWND hSci)
 {
@@ -1810,29 +1890,28 @@ void UpdateOccurrenceHighlights(HWND hSci)
         return;
     }
 
-    const std::string docText = GetDocumentText(hSci);
+    const ParsedTextCache* parsed = GetParsedText(hSci, grammar);
+    if (!parsed) {
+        ClearOccurrenceHighlights(hSci);
+        return;
+    }
+
+    const std::string& docText = parsed->text;
     const SymbolOccurrence symbol = GetCurrentSymbolOccurrence(hSci, docText);
     if (!symbol.valid || symbol.endByte > docText.size()) {
         ClearOccurrenceHighlights(hSci);
         return;
     }
 
-    const auto docPointer = static_cast<LRESULT>(::SendMessageW(hSci, SCI_GETDOCPOINTER, 0, 0));
-    if (g_occurrenceCache.valid && !g_occurrenceTextDirty &&
-        g_occurrenceCache.docPointer == docPointer &&
+    if (g_occurrenceCache.valid &&
+        g_occurrenceCache.generation == parsed->generation &&
         g_occurrenceCache.startByte == symbol.startByte &&
         g_occurrenceCache.endByte == symbol.endByte &&
         g_occurrenceCache.name == symbol.name) {
         return;
     }
 
-    ParsedDocument doc;
-    if (!doc.Parse(grammar, docText)) {
-        ClearOccurrenceHighlights(hSci);
-        return;
-    }
-
-    TSNode root = ts_tree_root_node(doc.tree);
+    TSNode root = ts_tree_root_node(parsed->tree);
     TSNode caretNode = ts_node_named_descendant_for_byte_range(root, symbol.startByte, symbol.endByte);
 
     // Only highlight when the caret symbol is itself a syntax node
@@ -1883,12 +1962,11 @@ void UpdateOccurrenceHighlights(HWND hSci)
             static_cast<LPARAM>(m.second - m.first));
     }
 
-    g_occurrenceCache.docPointer = docPointer;
+    g_occurrenceCache.generation = parsed->generation;
     g_occurrenceCache.name = symbol.name;
     g_occurrenceCache.startByte = symbol.startByte;
     g_occurrenceCache.endByte = symbol.endByte;
     g_occurrenceCache.valid = true;
-    g_occurrenceTextDirty = false;
 }
 
 void toggleHighlightOccurrences()
@@ -2108,6 +2186,10 @@ void installMissingBundledGrammar()
         return;
     }
 
+    // Pick up the freshly copied grammar and clear any earlier load failure
+    // recorded for this language before it was installed.
+    TreeSitterRegistry::Instance().Refresh(g_hModule);
+
     if (!ActivateTreeSitterLexer(hSci, language)) {
         ShowStatus(L"TreeSitterLexer: grammar copied but activation failed; restart Notepad++ if needed");
         std::wstring message =
@@ -2131,8 +2213,8 @@ void installMissingBundledGrammar()
 void GoToDefinitionImpl(bool preferReference)
 {
     HWND hSci = GetCurrentScintilla();
-    const TagEntry* best = FindDefinitionAtCaret(hSci);
-    if (!best) {
+    TagEntry best;
+    if (!FindDefinitionAtCaret(hSci, best)) {
         const std::string language = GetActiveTreeSitterLanguage(hSci);
         if (language.empty()) {
             ShowStatus(L"TreeSitterLexer: current buffer is not using a tree-sitter lexer");
@@ -2148,7 +2230,7 @@ void GoToDefinitionImpl(bool preferReference)
         return;
     }
 
-    NavigateToPosition(hSci, static_cast<Sci_Position>(best->startByte));
+    NavigateToPosition(hSci, static_cast<Sci_Position>(best.startByte));
     std::wstring status = L"TreeSitterLexer: go to definition -> ";
     status.append(symbol.begin(), symbol.end());
     ShowStatus(status);
@@ -2306,7 +2388,9 @@ __declspec(dllexport) void __cdecl beNotified(SCNotification* notifyCode)
     case SCN_UPDATEUI:
         if (notifyCode->updated & SC_UPDATE_SELECTION) {
             UpdateDefinitionCommandState();
-            UpdateInstallBundledGrammarCommandState();
+            // Install-ability depends on the file, not the caret, and checking
+            // it hits the file system; it is refreshed on buffer activation
+            // and after an install instead.
             // Use the view that fired the notification, not the focused one;
             // in split view they can differ.
             UpdateOccurrenceHighlights(notifyCode->nmhdr.hwndFrom);

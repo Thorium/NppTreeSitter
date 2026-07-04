@@ -307,6 +307,27 @@ Sci_Position SCI_METHOD TreeSitterILexer::WordListSet(int, const char*) { return
 // Predicate evaluation helpers
 // ---------------------------------------------------------------------------
 
+// Compile-once cache for #match? predicate regexes. The set of regexes is
+// small and fixed per grammar, but EvaluatePredicates runs per match per
+// keystroke, so compiling a std::regex inline is a hot-path cost. Invalid
+// regexes are cached as null so they are not recompiled on every match.
+static const std::regex* GetCachedRegex(const char* pattern, uint32_t length)
+{
+    static std::unordered_map<std::string, std::unique_ptr<std::regex>> cache;
+    const std::string key(pattern, length);
+    auto it = cache.find(key);
+    if (it == cache.end()) {
+        std::unique_ptr<std::regex> re;
+        try {
+            re = std::make_unique<std::regex>(pattern, length,
+                std::regex::ECMAScript | std::regex::optimize);
+        } catch (...) {
+        }
+        it = cache.emplace(key, std::move(re)).first;
+    }
+    return it->second.get();
+}
+
 // Check if a match satisfies all predicates for its pattern.
 // Supports #match? / #not-match? (regex) and #eq? / #not-eq? (literal).
 static bool EvaluatePredicates(const TSQuery* query, const TSQueryMatch& match,
@@ -359,15 +380,12 @@ static bool EvaluatePredicates(const TSQuery* query, const TSQueryMatch& match,
                     }
                 }
 
-                try {
-                    std::regex re(regexStr, regexLen,
-                                  std::regex::ECMAScript | std::regex::optimize);
-                    bool matched = std::regex_search(nodeText, re);
+                const std::regex* re = GetCachedRegex(regexStr, regexLen);
+                if (re) {
+                    const bool matched = std::regex_search(nodeText, *re);
                     if ((pred == "match?" && !matched) ||
                         (pred == "not-match?" && matched))
                         return false;
-                } catch (...) {
-                    // Invalid regex — skip predicate
                 }
 
                 i += 2;
@@ -516,6 +534,12 @@ void SCI_METHOD TreeSitterILexer::Lex(Sci_PositionU startPos, Sci_Position lengt
     Sci_Position docLen = pAccess->Length();
     const char* docText = pAccess->BufferPointer();
     if (!docText || docLen == 0)
+        return;
+
+    // A styling request starting at/after the document end (possible during
+    // rapid edits) would make the range length below negative; the resulting
+    // huge vector allocation would throw across the ILexer5 C boundary.
+    if (lengthDoc <= 0 || startPos >= static_cast<Sci_PositionU>(docLen))
         return;
 
     // Parse the document. When we have a tree from a previous Lex() call, derive
@@ -1012,51 +1036,54 @@ void SCI_METHOD TreeSitterILexer::Fold(Sci_PositionU startPos, Sci_Position leng
     Sci_Position lineCount = endLine - startLine + 1;
     std::vector<FoldInfo> foldInfo(lineCount, { 0, false });
 
-    // Recursive lambda to walk the tree
-    struct Walker {
-        Scintilla::IDocument* doc;
-        Sci_Position startLine;
-        Sci_Position endLine;
-        std::vector<FoldInfo>& info;
-
-        void walk(TSNode node, int depth) {
-            uint32_t childCount = ts_node_child_count(node);
-
-            TSPoint nodeStart = ts_node_start_point(node);
-            TSPoint nodeEnd = ts_node_end_point(node);
-
-            Sci_Position nodeLine = static_cast<Sci_Position>(nodeStart.row);
-            Sci_Position nodeEndLine = static_cast<Sci_Position>(nodeEnd.row);
-
-            // If this node spans multiple lines, mark the first line as a fold header
-            if (nodeEndLine > nodeLine && childCount > 0) {
-                if (nodeLine >= startLine && nodeLine <= endLine) {
-                    Sci_Position idx = nodeLine - startLine;
-                    info[idx].isHeader = true;
-                    if (depth > info[idx].level)
-                        info[idx].level = depth;
-                }
-            }
-
-            // Update level for all lines this node touches
-            for (Sci_Position line = nodeLine; line <= nodeEndLine; line++) {
-                if (line >= startLine && line <= endLine) {
-                    Sci_Position idx = line - startLine;
-                    if (depth > info[idx].level)
-                        info[idx].level = depth;
-                }
-            }
-
-            // Recurse into children
-            for (uint32_t i = 0; i < childCount; i++) {
-                TSNode child = ts_node_child(node, i);
-                walk(child, depth + 1);
-            }
-        }
+    // Walk the tree iteratively: AST depth is unbounded (deeply nested or
+    // error-recovered parses reach thousands of levels), so recursion would
+    // overflow the thread stack and take down the host process.
+    struct WalkItem {
+        TSNode node;
+        int depth;
     };
+    std::vector<WalkItem> walkStack;
+    walkStack.push_back({ root, 0 });
 
-    Walker walker = { pAccess, startLine, endLine, foldInfo };
-    walker.walk(root, 0);
+    while (!walkStack.empty()) {
+        const WalkItem item = walkStack.back();
+        walkStack.pop_back();
+
+        const TSPoint nodeStartPt = ts_node_start_point(item.node);
+        const TSPoint nodeEndPt = ts_node_end_point(item.node);
+        const Sci_Position nodeLine = static_cast<Sci_Position>(nodeStartPt.row);
+        const Sci_Position nodeEndLine = static_cast<Sci_Position>(nodeEndPt.row);
+
+        // A subtree entirely outside the requested line range cannot affect
+        // it (children lie within their parent's range), so prune it. This
+        // keeps Fold() proportional to the range instead of the whole tree.
+        if (nodeLine > endLine || nodeEndLine < startLine)
+            continue;
+
+        const uint32_t childCount = ts_node_child_count(item.node);
+
+        // If this node spans multiple lines, mark the first line as a fold header
+        if (nodeEndLine > nodeLine && childCount > 0 &&
+            nodeLine >= startLine && nodeLine <= endLine) {
+            FoldInfo& fi = foldInfo[nodeLine - startLine];
+            fi.isHeader = true;
+            if (item.depth > fi.level)
+                fi.level = item.depth;
+        }
+
+        // Update level for the in-range lines this node touches
+        const Sci_Position firstLine = nodeLine > startLine ? nodeLine : startLine;
+        const Sci_Position lastLine = nodeEndLine < endLine ? nodeEndLine : endLine;
+        for (Sci_Position line = firstLine; line <= lastLine; line++) {
+            FoldInfo& fi = foldInfo[line - startLine];
+            if (item.depth > fi.level)
+                fi.level = item.depth;
+        }
+
+        for (uint32_t i = 0; i < childCount; i++)
+            walkStack.push_back({ ts_node_child(item.node, i), item.depth + 1 });
+    }
 
     // Apply fold levels
     constexpr int SC_FOLDLEVELBASE = 0x400;
@@ -1236,7 +1263,10 @@ void TreeSitterRegistry::DiscoverAvailableLanguages()
     }
     std::sort(m_languageNames.begin(), m_languageNames.end());
 
-    for (const auto& langName : m_languageNames)
+    // Give every grammar present on disk (not just the exposed subset) another
+    // load attempt after an explicit refresh, e.g. when the user replaces a
+    // broken DLL or installs a bundled grammar.
+    for (const auto& langName : discovered)
         m_failedLanguages.erase(langName);
 }
 
