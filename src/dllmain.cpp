@@ -1265,7 +1265,7 @@ std::vector<LocalDef> CollectLocals(const TreeSitterGrammar* grammar, const std:
                 continue;
             }
 
-            if (name != "local.definition")
+            if (!IsLocalDefinitionCapture(name))
                 continue;
             if (nodeStart >= nodeEnd || nodeEnd > docText.size())
                 continue;

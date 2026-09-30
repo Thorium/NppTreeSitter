@@ -665,7 +665,7 @@ void SCI_METHOD TreeSitterILexer::Lex(Sci_PositionU startPos, Sci_Position lengt
                         scope.inherits = inherits;
                         localScopes.push_back(std::move(scope));
                     }
-                    else if (sCapture == "local.definition") {
+                    else if (IsLocalDefinitionCapture(sCapture)) {
                         if (nodeStart < static_cast<uint32_t>(docLen) &&
                             nodeEnd <= static_cast<uint32_t>(docLen)) {
                             std::string defName(docText + nodeStart, nodeEnd - nodeStart);

@@ -65,6 +65,17 @@ struct TSStyleInfo {
 
 extern const TSStyleInfo kStyleInfo[TSStyle::Count];
 
+// True for a locals.scm definition capture: "local.definition" itself or a
+// sub-typed variant such as "local.definition.var" / "local.definition.function"
+// (the nvim-treesitter convention used by the vendored locals queries).
+inline bool IsLocalDefinitionCapture(const std::string& name)
+{
+    static const char kPrefix[] = "local.definition";
+    const size_t len = sizeof(kPrefix) - 1;
+    return name.compare(0, len, kPrefix) == 0 &&
+           (name.size() == len || name[len] == '.');
+}
+
 // ============================================================================
 // TreeSitterGrammar - Loads a grammar DLL and its highlight query.
 // ============================================================================
