@@ -1007,6 +1007,10 @@ void SCI_METHOD TreeSitterILexer::Lex(Sci_PositionU startPos, Sci_Position lengt
 // ---------------------------------------------------------------------------
 // Fold() - Compute fold levels from the AST
 // ---------------------------------------------------------------------------
+// TODO(upstream): the fold-level computation below is a local fix for
+// Thorium/NppTreeSitter issue #8 (folding breaks when a header contains an
+// expression deeper than the body). Separate it into a PR to the upstream
+// repository when convenient; it is language-agnostic and not BSL-specific.
 void SCI_METHOD TreeSitterILexer::Fold(Sci_PositionU startPos, Sci_Position lengthDoc,
                                         int /*initStyle*/, Scintilla::IDocument* pAccess)
 {
@@ -1021,14 +1025,22 @@ void SCI_METHOD TreeSitterILexer::Fold(Sci_PositionU startPos, Sci_Position leng
     Sci_Position startLine = pAccess->LineFromPosition(startPos);
     Sci_Position endLine = pAccess->LineFromPosition(endPos);
 
-    // Walk the AST to compute per-line depth.
-    // Strategy: for each AST node that spans multiple lines, the first line
-    // gets SC_FOLDLEVELHEADERFLAG and subsequent lines get +1 depth.
-    // We use a simple recursive walk.
+    // Walk the AST to compute fold levels.
+    //
+    // A fold level must count enclosing *multi-line* nodes, not the raw AST
+    // depth. A header like "def f(x=os.environ.get('H')):" contains deeply
+    // nested single-line sub-expressions, so using AST depth gives the header a
+    // level higher than its own body and Scintilla renders an empty fold.
+    // Instead every multi-line node with children is exactly one fold level: its
+    // header line sits at the current level and its body is one level deeper,
+    // regardless of how deep the expressions inside the header are.
+    //
+    // UPSTREAM: fixes https://github.com/Thorium/NppTreeSitter/issues/8 -
+    // offer as a PR to Thorium/NppTreeSitter once verified (see the project's
+    // docs/UPSTREAM.md). Kept on a separate branch so the fix can be submitted
+    // independently of the local style/mapping changes.
     TSNode root = ts_tree_root_node(m_tree);
 
-    // Compute fold levels for each line in range
-    // Simple approach: count the depth of the deepest node starting on each line
     struct FoldInfo {
         int level;
         bool isHeader;
@@ -1036,15 +1048,20 @@ void SCI_METHOD TreeSitterILexer::Fold(Sci_PositionU startPos, Sci_Position leng
     Sci_Position lineCount = endLine - startLine + 1;
     std::vector<FoldInfo> foldInfo(lineCount, { 0, false });
 
-    // Walk the tree iteratively: AST depth is unbounded (deeply nested or
-    // error-recovered parses reach thousands of levels), so recursion would
-    // overflow the thread stack and take down the host process.
+    // Walk iteratively: nesting is unbounded (deeply nested or error-recovered
+    // parses reach thousands of levels), so recursion would overflow the thread
+    // stack and take down the host process.
     struct WalkItem {
         TSNode node;
-        int depth;
+        int foldDepth;   // number of enclosing multi-line fold nodes
     };
     std::vector<WalkItem> walkStack;
-    walkStack.push_back({ root, 0 });
+
+    // The tree root (module) spans the whole document; making it a fold header
+    // would wrap every line in one fold, so start from its children instead.
+    const uint32_t rootChildren = ts_node_child_count(root);
+    for (uint32_t i = 0; i < rootChildren; i++)
+        walkStack.push_back({ ts_node_child(root, i), 0 });
 
     while (!walkStack.empty()) {
         const WalkItem item = walkStack.back();
@@ -1062,27 +1079,35 @@ void SCI_METHOD TreeSitterILexer::Fold(Sci_PositionU startPos, Sci_Position leng
             continue;
 
         const uint32_t childCount = ts_node_child_count(item.node);
+        const bool isFoldNode = childCount > 0 && nodeEndLine > nodeLine;
 
-        // If this node spans multiple lines, mark the first line as a fold header
-        if (nodeEndLine > nodeLine && childCount > 0 &&
-            nodeLine >= startLine && nodeLine <= endLine) {
-            FoldInfo& fi = foldInfo[nodeLine - startLine];
-            fi.isHeader = true;
-            if (item.depth > fi.level)
-                fi.level = item.depth;
-        }
+        int childFoldDepth = item.foldDepth;
+        if (isFoldNode) {
+            // Header line keeps the current level; the body is one level deeper.
+            if (nodeLine >= startLine && nodeLine <= endLine) {
+                FoldInfo& fi = foldInfo[nodeLine - startLine];
+                // When several fold nodes share a start line (e.g. "if x: for y:"),
+                // keep the outermost one: Scintilla allows a single fold per line.
+                if (!fi.isHeader) {
+                    fi.isHeader = true;
+                    if (item.foldDepth > fi.level)
+                        fi.level = item.foldDepth;
+                }
+            }
 
-        // Update level for the in-range lines this node touches
-        const Sci_Position firstLine = nodeLine > startLine ? nodeLine : startLine;
-        const Sci_Position lastLine = nodeEndLine < endLine ? nodeEndLine : endLine;
-        for (Sci_Position line = firstLine; line <= lastLine; line++) {
-            FoldInfo& fi = foldInfo[line - startLine];
-            if (item.depth > fi.level)
-                fi.level = item.depth;
+            const Sci_Position firstBody = (nodeLine + 1 > startLine) ? nodeLine + 1 : startLine;
+            const Sci_Position lastBody = (nodeEndLine < endLine) ? nodeEndLine : endLine;
+            for (Sci_Position line = firstBody; line <= lastBody; line++) {
+                FoldInfo& fi = foldInfo[line - startLine];
+                if (item.foldDepth + 1 > fi.level)
+                    fi.level = item.foldDepth + 1;
+            }
+
+            childFoldDepth = item.foldDepth + 1;
         }
 
         for (uint32_t i = 0; i < childCount; i++)
-            walkStack.push_back({ ts_node_child(item.node, i), item.depth + 1 });
+            walkStack.push_back({ ts_node_child(item.node, i), childFoldDepth });
     }
 
     // Apply fold levels
