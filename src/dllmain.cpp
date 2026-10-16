@@ -908,6 +908,9 @@ std::string DetectTreeSitterLanguageForFile(const std::wstring& path, const std:
         { L"mkd", "markdown" },
         { L"cmake", "cmake" },
         { L"sql", "sql" },
+        // 1C:Enterprise / OneScript (BSL). The grammar ships as tree-sitter-bsl.
+        { L"bsl", "bsl" },
+        { L"os", "bsl" },
         { L"f", "fortran" },
         { L"for", "fortran" },
         { L"f90", "fortran" },
