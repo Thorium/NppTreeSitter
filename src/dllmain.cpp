@@ -108,6 +108,11 @@ constexpr UINT SCI_SETILEXER = 4033;
 constexpr UINT SCI_STYLESETFORE = 2051;
 constexpr UINT SCI_STYLESETBOLD = 2053;
 constexpr UINT SCI_STYLESETITALIC = 2054;
+constexpr UINT SCI_STYLESETSIZE = 2055;
+constexpr UINT SCI_STYLESETFONT = 2056;
+constexpr UINT SCI_STYLEGETSIZE = 2485;
+constexpr UINT SCI_STYLEGETFONT = 2486;
+constexpr int  STYLE_DEFAULT_INDEX = 32;   // Scintilla STYLE_DEFAULT
 constexpr UINT SCI_GETDOCPOINTER = 2357;
 constexpr UINT SCI_INDICSETSTYLE = 2080;
 constexpr UINT SCI_INDICSETFORE = 2081;
@@ -562,6 +567,22 @@ void ApplyTreeSitterStyleColors(HWND hSci)
     }
     ::SendMessageW(hSci, SCI_STYLESETBOLD, 3, 1);    // keyword bold
     ::SendMessageW(hSci, SCI_STYLESETITALIC, 2, 1);  // doc comment italic
+
+    // Inherit the editor's global font name/size from STYLE_DEFAULT. When the
+    // lexer is attached directly (auto-detect or session reload) instead of being
+    // picked from the Language menu, Notepad++ never applies the stylers.xml font
+    // to these styles, so the size keeps Scintilla's uninitialised default (0) and
+    // the text renders as unreadably tiny glyphs.
+    char defaultFont[256] = {};
+    const LRESULT fontLen = ::SendMessageW(hSci, SCI_STYLEGETFONT, STYLE_DEFAULT_INDEX,
+                                           reinterpret_cast<LPARAM>(defaultFont));
+    const LRESULT defaultSize = ::SendMessageW(hSci, SCI_STYLEGETSIZE, STYLE_DEFAULT_INDEX, 0);
+    for (int i = 0; i < static_cast<int>(std::size(kFore)); ++i) {
+        if (fontLen > 0)
+            ::SendMessageW(hSci, SCI_STYLESETFONT, i, reinterpret_cast<LPARAM>(defaultFont));
+        if (defaultSize > 0)
+            ::SendMessageW(hSci, SCI_STYLESETSIZE, i, static_cast<LPARAM>(defaultSize));
+    }
 }
 
 bool ActivateTreeSitterLexer(HWND hSci, const std::string& language)
